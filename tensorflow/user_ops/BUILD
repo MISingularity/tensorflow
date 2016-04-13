@@ -19,6 +19,14 @@ exports_files(["LICENSE"])
 
 load("//tensorflow:tensorflow.bzl", "py_tests")
 load("//tensorflow:tensorflow.bzl", "tf_custom_op_library")
+load(
+    "//tensorflow:tensorflow.bzl",
+    "tf_cc_test",
+    "tf_cc_tests",
+    "tf_kernel_libraries",
+    "tf_kernel_library",
+    "cc_header_only_library",
+)
 
 tf_custom_op_library(
     name = "ackermann_op.so",
@@ -31,6 +39,25 @@ py_tests(
     size = "small",
     srcs = ["ackermann_test.py"],
     data = [":ackermann_op.so"],
+    tags = [
+        "noasan",
+        "notsan",
+    ],
+)
+
+tf_custom_op_library(
+    name = "look_ahead.so",
+    srcs = ["look_ahead.cc"],
+    gpu_srcs = ["look_ahead.cu.cc", "look_ahead.h"],
+    deps = ["//google/protobuf"],
+)
+
+
+py_tests(
+    name = "look_ahead_test",
+    size = "small",
+    srcs = ["look_ahead_op_test.py"],
+    data = [":look_ahead.so"],
     tags = [
         "noasan",
         "notsan",
