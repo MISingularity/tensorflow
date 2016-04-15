@@ -52,12 +52,29 @@ tf_custom_op_library(
     deps = ["//google/protobuf"],
 )
 
+tf_custom_op_library(
+    name = "look_ahead_grad.so",
+    srcs = ["look_ahead_grad.cc"],
+    gpu_srcs = ["look_ahead_grad.cu.cc", "look_ahead_grad.h"],
+    deps = ["//google/protobuf"],
+)
 
 py_tests(
     name = "look_ahead_test",
     size = "small",
     srcs = ["look_ahead_op_test.py"],
     data = [":look_ahead.so"],
+    tags = [
+        "noasan",
+        "notsan",
+    ],
+)
+
+py_tests(
+    name = "look_ahead_grad_test",
+    size = "small",
+    srcs = ["look_ahead_grad_op_test.py"],
+    data = [":look_ahead_grad.so"],
     tags = [
         "noasan",
         "notsan",
