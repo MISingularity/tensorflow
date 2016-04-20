@@ -7,14 +7,12 @@ import os.path
 
 import tensorflow as tf
 
-
 class LookaheadGradTest(tf.test.TestCase):
 
   def test(self):
     library_filename = os.path.join(tf.resource_loader.get_data_files_path(),
                                     'look_ahead_grad.so')
     look_ahead_module = tf.load_op_library(library_filename)
-
     with self.test_session():
       x1 = [[1.0,2.0,3.0],[4.0,5.0,6.0],[7.0,8.0,9.0]]
       x2 = [[1.0,2.0,4.0],[4.0,8.0,16.0]]
@@ -30,8 +28,13 @@ class LookaheadGradTest(tf.test.TestCase):
       self.assertAllEqual(result_filter.eval(), [[4.0,4.0,4.0],[1.5,1.5,1.5]])
       result_filter_2 = look_ahead_module.lookaheadgradfiltergpu(y1,y2,y3)
       self.assertAllEqual(result_filter_2.eval(), [[4.0,4.0,4.0],[1.5,1.5,1.5]])
-      #print(result.eval())
-      #print(result_2.eval())
+      print(result.eval())
+      print(result_2.eval())
+      print(result_filter.eval())
+      print(result_filter_2.eval())
+      xw = look_ahead_module.lookaheadgradinputcpu(x1,x2,x3)
+      w_grad = tf.gradients(xw, x2, module=look_ahead_module)
+      print(w_grad)
 
 if __name__ == '__main__':
   tf.test.main()

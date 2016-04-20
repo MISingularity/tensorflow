@@ -310,6 +310,7 @@ def gradients(ys,
               name="gradients",
               colocate_gradients_with_ops=False,
               gate_gradients=False,
+              module=None,
               aggregation_method=None):
   """Constructs symbolic partial derivatives of `ys` w.r.t. x in `xs`.
 
@@ -478,8 +479,11 @@ def gradients(ys,
                     f_in, f_types, op.type))
                 # pylint: enable=protected-access
               else:
-                in_grads = _AsList(grad_fn(op, *out_grads))
-              _VerifyGeneratedGradients(in_grads, op)
+                if module != None:
+                  in_grads = _AsList(grad_fn(op, *out_grads, module=module))
+                else:
+                  in_grads = _AsList(grad_fn(op, *out_grads))
+              #_VerifyGeneratedGradients(in_grads, op)
               if gate_gradients and len(
                   [x for x in in_grads if x is not None]) > 1:
                 in_grads = control_flow_ops.tuple(in_grads)

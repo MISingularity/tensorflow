@@ -50,6 +50,21 @@ def _Conv2DBackpropGrad(op, grad):
               op.get_attr("data_format"))]
 
 
+@ops.RegisterGradient("Lookaheadgradinputcpu")
+def _Lookahead_grad_input(op, grad, module=None):
+  """The derivatives for deconvolution.
+
+  Args:
+    op: the Deconvolution op.
+    grad: the tensor representing the gradient w.r.t. the output
+
+  Returns:
+    the gradients w.r.t. the input and the filter
+  """
+  return [module.lookaheadgradinputcpu(
+              op.inputs[0],op.inputs[1],op.inputs[2])]
+
+
 @ops.RegisterGradient("Softmax")
 def _SoftmaxGrad(op, grad_softmax):
   """The derivative of the softmax nonlinearity.
