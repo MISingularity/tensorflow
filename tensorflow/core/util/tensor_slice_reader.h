@@ -22,15 +22,18 @@ limitations under the License.
 
 #include <unordered_map>
 
+#include <vector>
+#include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/tensor_slice.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
 #include "tensorflow/core/lib/gtl/map_util.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/port.h"
+#include "tensorflow/core/platform/macros.h"
+#include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/protobuf.h"
-#include "tensorflow/core/public/status.h"
-#include "tensorflow/core/public/tensor_shape.h"
+#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/saved_tensor_slice.pb.h"
 #include "tensorflow/core/util/saved_tensor_slice_util.h"
 #include "tensorflow/core/util/tensor_slice_set.h"
@@ -59,6 +62,7 @@ class TensorSliceReader {
   typedef std::function<Status(const string&, Table**)> OpenTableFunction;
 
   static const int kLoadAllShards = -1;
+  TensorSliceReader(const string& filepattern);
   TensorSliceReader(const string& filepattern, OpenTableFunction open_function);
   TensorSliceReader(const string& filepattern, OpenTableFunction open_function,
                     int preferred_shard);
@@ -91,6 +95,13 @@ class TensorSliceReader {
   const std::unordered_map<string, TensorSliceSet*>& Tensors() const {
     return tensors_;
   }
+
+  typedef std::unordered_map<string, TensorShape> VarToShapeMap;
+  // Returns a map from tensor name to shape.
+  VarToShapeMap GetVariableToShapeMap() const;
+
+  // Returns a string containing names and shapes of all the tensors.
+  const string DebugString() const;
 
  private:
   friend class TensorSliceWriteTestHelper;

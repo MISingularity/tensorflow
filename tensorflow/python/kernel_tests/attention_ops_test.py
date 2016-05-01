@@ -13,17 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for tensorflow.ops.attention_ops."""
+"""Tests for image.extract_glimpse()."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.python.platform
-
+import numpy as np
 import tensorflow as tf
-
-from tensorflow.python.ops import attention_ops
 
 
 class ExtractGlimpseTest(tf.test.TestCase):
@@ -82,9 +79,9 @@ class ExtractGlimpseTest(tf.test.TestCase):
     t1 = tf.constant([glimpse_sizes[1], glimpse_sizes[0]], shape=[2])
     t2 = tf.constant([offsets[1], offsets[0]], shape=[1, 2])
     glimpse_rows = (tf.transpose(
-        attention_ops.extract_glimpse(t_rows_4d, t1, t2), [0, 2, 1, 3]))
+        tf.image.extract_glimpse(t_rows_4d, t1, t2), [0, 2, 1, 3]))
     glimpse_cols = (tf.transpose(
-        attention_ops.extract_glimpse(t_cols_4d, t1, t2), [0, 2, 1, 3]))
+        tf.image.extract_glimpse(t_cols_4d, t1, t2), [0, 2, 1, 3]))
 
     # Evaluate the Tensorflow Graph.
     with self.test_session() as sess:
@@ -116,6 +113,14 @@ class ExtractGlimpseTest(tf.test.TestCase):
                        offsets=[0.0, 0.0],
                        expected_rows=[20, 21, 22],
                        expected_cols=[29, 30, 31, 32, 33])
+
+  def testEmptyTensor(self):
+    empty_image = np.zeros((0, 4, 3, 0))
+    offsets = np.zeros((0, 2))
+    with self.test_session():
+      result = tf.image.extract_glimpse(empty_image, [1, 1], offsets)
+      self.assertAllEqual(np.zeros((0, 1, 1, 0), dtype=np.float32),
+                          result.eval())
 
   def testLargeCenterGlimpse(self):
     self._VerifyValues(tensor_in_sizes=[41, 61],

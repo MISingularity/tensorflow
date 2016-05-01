@@ -39,11 +39,11 @@ The MNIST data is hosted on
 [Yann LeCun's website](http://yann.lecun.com/exdb/mnist/).  For your
 convenience, we've included some python code to download and install the data
 automatically. You can either download
-[the code](https://tensorflow.googlesource.com/tensorflow/+/master/tensorflow/examples/tutorials/mnist/input_data.py)
+[the code](https://www.tensorflow.org/code/tensorflow/examples/tutorials/mnist/input_data.py)
 and import it as below, or simply copy and paste it in.
 
 ```python
-import tensorflow.examples.tutorials.mnist.input_data
+from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 ```
 
@@ -170,7 +170,7 @@ or negative weight. Softmax then normalizes these weights, so that they add up
 to one, forming a valid probability distribution. (To get more intuition about
 the softmax function, check out the
 [section](http://neuralnetworksanddeeplearning.com/chap3.html#softmax)
-on it in Michael Nieslen's book, complete with an interactive visualization.)
+on it in Michael Nielsen's book, complete with an interactive visualization.)
 
 
 You can picture our softmax regression as looking something like the following,
@@ -316,20 +316,22 @@ cross_entropy = -tf.reduce_sum(y_*tf.log(y))
 
 First, `tf.log` computes the logarithm of each element of `y`. Next, we multiply
 each element of `y_` with the corresponding element of `tf.log(y)`. Finally,
-`tf.reduce_sum` adds all the elements of the tensor. (Note that this isn't
-just the cross-entropy of the truth with a single prediction, but the sum of the
-cross-entropies for all 100 images we looked at. How well we are doing on 100
+`tf.reduce_sum` adds all the elements of the tensor.
+
+Note that this isn't just the cross-entropy of the truth with a single
+prediction, but the sum of the cross-entropies for all the images we looked at.
+In this example, we have 100 images in each batch: how well we are doing on 100
 data points is a much better description of how good our model is than a single
-data point.)
+data point.
 
 Now that we know what we want our model to do, it's very easy to have TensorFlow
 train it to do so.
 Because TensorFlow knows the entire graph of your computations, it
 can automatically use the [backpropagation
 algorithm](http://colah.github.io/posts/2015-08-Backprop/)
-to efficiently determine how your variables affect the cost you ask it minimize.
-Then it can apply your choice of optimization algorithm to modify the variables
-and reduce the cost.
+to efficiently determine how your variables affect the cost you ask it to
+minimize. Then it can apply your choice of optimization algorithm to modify the
+variables and reduce the cost.
 
 ```python
 train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
@@ -404,7 +406,7 @@ cast to floating point numbers and then take the mean. For example,
 `[True, False, True, True]` would become `[1,0,1,1]` which would become `0.75`.
 
 ```python
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 ```
 
 Finally, we ask for our accuracy on our test data.

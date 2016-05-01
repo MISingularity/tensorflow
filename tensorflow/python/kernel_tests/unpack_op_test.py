@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.python.platform
-
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
@@ -65,7 +63,7 @@ class UnpackOpTest(tf.test.TestCase):
   def testCannotInferNum(self):
     x = tf.placeholder(np.float32)
     with self.assertRaisesRegexp(
-        ValueError, r'Cannot infer num from shape TensorShape\(None\)'):
+        ValueError, r'Cannot infer num from shape <unknown>'):
       tf.unpack(x)
 
 

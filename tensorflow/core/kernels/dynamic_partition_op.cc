@@ -15,11 +15,13 @@ limitations under the License.
 
 // See docs in ../ops/data_flow_ops.cc.
 
+#include <vector>
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/gtl/inlined_vector.h"
-#include "tensorflow/core/public/tensor.h"
+#include "tensorflow/core/util/util.h"
 
 namespace tensorflow {
 
@@ -41,13 +43,13 @@ class DynamicPartitionOp_Shared : public OpKernel {
                                   OpOutputList* Tout) {
     OP_REQUIRES_OK(c, c->input("data", data));
     OP_REQUIRES_OK(c, c->input("partitions", partitions));
-    OP_REQUIRES(c, TensorShapeUtils::StartsWith((*data)->shape(),
-                                                (*partitions)->shape()),
-                errors::InvalidArgument(
-                    "data.shape must start with partitions.shape, ",
-                    "got data.shape = ", (*data)->shape().ShortDebugString(),
-                    ", partitions.shape = ",
-                    (*partitions)->shape().ShortDebugString()));
+    OP_REQUIRES(
+        c,
+        TensorShapeUtils::StartsWith((*data)->shape(), (*partitions)->shape()),
+        errors::InvalidArgument(
+            "data.shape must start with partitions.shape, ",
+            "got data.shape = ", (*data)->shape().DebugString(),
+            ", partitions.shape = ", (*partitions)->shape().DebugString()));
 
     // Count how many occurrences of each partition id we have in partitions
     gtl::InlinedVector<int, 32> partition_count(num_partitions_);
@@ -57,7 +59,7 @@ class DynamicPartitionOp_Shared : public OpKernel {
       const int32 p = e_partitions(i);
       OP_REQUIRES(c, p >= 0 && p < num_partitions_,
                   errors::InvalidArgument(
-                      "partitions", SliceString((*partitions)->shape(), i),
+                      "partitions", SliceDebugString((*partitions)->shape(), i),
                       " = ", p, " is not in [0, ", num_partitions_, ")"));
       partition_count[p]++;
     }
@@ -77,30 +79,6 @@ class DynamicPartitionOp_Shared : public OpKernel {
 
  protected:
   int num_partitions_;
-
-  static string SliceString(const TensorShape& shape, const int64 flat) {
-    // Special case rank 0 and 1
-    const int dims = shape.dims();
-    if (dims == 0) return "";
-    if (dims == 1) return strings::StrCat("[", flat, "]");
-
-    // Compute strides
-    gtl::InlinedVector<int64, 32> strides(dims);
-    strides.back() = 1;
-    for (int i = dims - 2; i >= 0; i--) {
-      strides[i] = strides[i + 1] * shape.dim_size(i + 1);
-    }
-
-    // Unflatten index
-    int64 left = flat;
-    string result;
-    for (int i = 0; i < dims; i++) {
-      strings::StrAppend(&result, i ? "," : "[", left / strides[i]);
-      left %= strides[i];
-    }
-    strings::StrAppend(&result, "]");
-    return result;
-  }
 };
 
 template <class T>

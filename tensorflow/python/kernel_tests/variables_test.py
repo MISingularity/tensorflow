@@ -20,13 +20,9 @@ from __future__ import print_function
 
 import operator
 
-import tensorflow.python.platform
-
 import numpy as np
-
-import tensorflow.python.platform
-
 import tensorflow as tf
+
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import random_ops
 
@@ -82,6 +78,14 @@ class VariablesTestCase(tf.test.TestCase):
       self.assertAllClose(rnd.eval(), dep.eval())
       self.assertAllClose(rnd.eval() + dep.eval() + 2.0,
                           depdep.eval())
+
+  def testIterable(self):
+    with self.assertRaisesRegexp(TypeError, "not iterable"):
+      for _ in tf.Variable(0.0):
+        pass
+    with self.assertRaisesRegexp(TypeError, "not iterable"):
+      for _ in tf.Variable([0.0, 1.0]):
+        pass
 
   def testAssignments(self):
     with self.test_session():
@@ -192,6 +196,18 @@ class VariablesTestCase(tf.test.TestCase):
       self.assertAllClose(3.0, var_y.eval())
       self.assertAllClose(5.0, tf.add(var_x, var_y).eval())
 
+  def testCachingDevice(self):
+    with self.test_session():
+      var = tf.Variable(2.0)
+      self.assertEqual(var.device, var.value().device)
+      self.assertEqual(var.device, var.initialized_value().device)
+
+      var_cached = tf.Variable(2.0, caching_device="/job:foo")
+      self.assertFalse(var_cached.device.startswith("/job:foo"))
+      self.assertTrue(var_cached.value().device.startswith("/job:foo"))
+      self.assertTrue(
+          var_cached.initialized_value().device.startswith("/job:foo"))
+
   def testCollections(self):
     with self.test_session():
       var_x = tf.Variable(2.0)
@@ -275,6 +291,16 @@ class VariablesTestCase(tf.test.TestCase):
       var = tf.Variable([1, 12])
       tf.initialize_all_variables().run()
       self.assertAllClose([1, 12], sess.run(var))
+
+  def testDevicePlacement(self):
+    with self.test_session() as sess:
+      with tf.device("/cpu:0"):
+        var = tf.Variable([1, 12])
+      init_value = var.initialized_value()
+      init_op = tf.initialize_all_variables()
+      self.assertEqual(var.op.device, init_value.device)
+      self.assertEqual(var.op.device, init_op.device)
+      sess.run(init_op)
 
 
 class IsInitializedTest(tf.test.TestCase):

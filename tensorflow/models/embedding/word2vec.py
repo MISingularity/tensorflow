@@ -37,8 +37,6 @@ import sys
 import threading
 import time
 
-import tensorflow.python.platform
-
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 import numpy as np
@@ -397,8 +395,7 @@ class Word2Vec(object):
     initial_epoch, initial_words = self._session.run([self._epoch, self._words])
 
     summary_op = tf.merge_all_summaries()
-    summary_writer = tf.train.SummaryWriter(opts.save_path,
-                                            graph_def=self._session.graph_def)
+    summary_writer = tf.train.SummaryWriter(opts.save_path, self._session.graph)
     workers = []
     for _ in xrange(opts.concurrent_steps):
       t = threading.Thread(target=self._train_thread_body)
@@ -509,7 +506,8 @@ def main(_):
     sys.exit(1)
   opts = Options()
   with tf.Graph().as_default(), tf.Session() as session:
-    model = Word2Vec(opts, session)
+    with tf.device("/cpu:0"):
+      model = Word2Vec(opts, session)
     for _ in xrange(opts.epochs_to_train):
       model.train()  # Process one epoch
       model.eval()  # Eval analogies.

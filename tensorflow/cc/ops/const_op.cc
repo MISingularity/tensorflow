@@ -58,7 +58,7 @@ const string& OpName() {
       if (tensor.NumElements() != static_cast<int64>(t.size())) {              \
         options.UpdateStatus(errors::InvalidArgument(                          \
             t.size(), " values provided to Const() != ", tensor.NumElements(), \
-            " elements for shape ", shape.ShortDebugString()));                \
+            " elements for shape ", shape.DebugString()));                     \
       } else {                                                                 \
         std::copy_n(t.data(), t.size(), tensor.flat<TYPE>().data());           \
         node_builder.Attr("dtype", dt).Attr("value", tensor);                  \
@@ -86,6 +86,9 @@ DEFINE_CONST(bool, bool_val);
 
 DEFINE_CONST_IMPL(complex64, proto.add_scomplex_val(t.begin()->real());
                   proto.add_scomplex_val(t.begin()->imag()););
+
+DEFINE_CONST_IMPL(complex128, proto.add_dcomplex_val(t.begin()->real());
+                  proto.add_dcomplex_val(t.begin()->imag()););
 
 Node* Const(StringPiece s, const GraphDefBuilder::Options& options) {
   if (options.HaveError()) return nullptr;

@@ -37,7 +37,6 @@ from datetime import datetime
 import math
 import time
 
-import tensorflow.python.platform
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -70,7 +69,7 @@ def inference(images):
   with tf.name_scope('conv1') as scope:
     kernel = tf.Variable(tf.truncated_normal([11, 11, 3, 64], dtype=tf.float32,
                                              stddev=1e-1), name='weights')
-    conv = tf.nn.conv2d(images, kernel, [1, 4, 4, 1], padding='VALID')
+    conv = tf.nn.conv2d(images, kernel, [1, 4, 4, 1], padding='SAME')
     biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                          trainable=True, name='biases')
     bias = tf.nn.bias_add(conv, biases)
@@ -164,7 +163,7 @@ def time_tensorflow_run(session, target, info_string):
 
   Args:
     session: the TensorFlow session to run the computation under.
-    target: the targe Tensor that is passed to the session's run() function.
+    target: the target Tensor that is passed to the session's run() function.
     info_string: a string summarizing this run, to be printed with the stats.
 
   Returns:
@@ -200,8 +199,8 @@ def run_benchmark():
     # In order to force the model to start with the same activations sizes,
     # we add 3 to the image_size and employ VALID padding above.
     images = tf.Variable(tf.random_normal([FLAGS.batch_size,
-                                           image_size + 3,
-                                           image_size + 3, 3],
+                                           image_size,
+                                           image_size, 3],
                                           dtype=tf.float32,
                                           stddev=1e-1))
 

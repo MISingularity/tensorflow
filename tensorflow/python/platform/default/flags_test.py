@@ -34,7 +34,7 @@ flags.DEFINE_boolean("bool_negation", True, "HelpString")
 flags.DEFINE_boolean("bool_a", False, "HelpString")
 flags.DEFINE_boolean("bool_c", False, "HelpString")
 flags.DEFINE_boolean("bool_d", True, "HelpString")
-flags.DEFINE_boolean("bool_e", True, "HelpString")
+flags.DEFINE_bool("bool_e", True, "HelpString")
 
 FLAGS = flags.FLAGS
 
@@ -86,7 +86,8 @@ class FlagsTest(googletest.TestCase):
 if __name__ == "__main__":
   # Test command lines
   sys.argv.extend(["--bool_a", "--nobool_negation", "--bool_c=True",
-                   "--bool_d=False", "--bool_e=gibberish"])
+                   "--bool_d=False", "--bool_e=gibberish", "--unknown_flag",
+                   "and_argument"])
 
   # googletest.main() tries to interpret the above flags, so use the
   # direct functions instead.

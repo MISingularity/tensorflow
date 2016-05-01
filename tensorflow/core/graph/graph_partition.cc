@@ -17,9 +17,10 @@ limitations under the License.
 
 #include <deque>
 #include <unordered_map>
+#include <vector>
 
+#include "tensorflow/core/framework/memory_types.h"
 #include "tensorflow/core/framework/node_def_builder.h"
-#include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/costmodel.h"
 #include "tensorflow/core/graph/graph_def_builder.h"
@@ -27,6 +28,7 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/hash/hash.h"
 #include "tensorflow/core/platform/logging.h"
+#include "tensorflow/core/util/device_name_utils.h"
 
 namespace tensorflow {
 
@@ -307,6 +309,52 @@ NodeDef* AddControlTrigger(const PartitionOptions& opts, GraphDef* gdef,
   return result;
 }
 
+// Optimize colocation for control flow nodes. For cond, we want the
+// switch nodes to colocate with its data input. This is particularly
+// needed for conditional reading of a remote variable. It may also
+// reduce the number of devices involved in a loop.
+// TODO(yuanbyu): In this case, we don't respect the requested device in
+// the GraphDef for these nodes. Ideally, the placer would enforce the
+// colocation to render this unnecessary.
+void OptimizeControlFlowColocation(Node* node) {
+  if (IsSwitch(node)) {
+    for (const Edge* in_edge : node->in_edges()) {
+      if (in_edge->dst_input() == 0) {
+        // Colocate with the data input.
+        node->set_assigned_device_name(in_edge->src()->assigned_device_name());
+        return;
+      }
+    }
+  } else if (IsExit(node)) {
+    for (const Edge* in_edge : node->in_edges()) {
+      if (!in_edge->IsControlEdge()) {
+        // Colocate with upstream node.
+        node->set_assigned_device_name(in_edge->src()->assigned_device_name());
+        return;
+      }
+    }
+  } else {
+    if ((IsEnter(node) && !IsRefType(node->input_type(0))) ||
+        IsNextIteration(node)) {
+      const Edge* data_edge = nullptr;
+      for (const Edge* out_edge : node->out_edges()) {
+        if (!out_edge->IsControlEdge()) {
+          if (data_edge) {
+            data_edge = nullptr;
+            return;
+          }
+          data_edge = out_edge;
+        }
+      }
+      // Colocate if there is only one downstream data node.
+      if (data_edge) {
+        node->set_assigned_device_name(
+            data_edge->dst()->assigned_device_name());
+      }
+    }
+  }
+}
+
 // Assign to each node the name of the frame and the level it belongs to.
 // We check the well-formedness of the graph: All inputs to a node must
 // come from the same frame and have the same "static" iteration level.
@@ -324,10 +372,10 @@ Status BuildControlFlowInfo(Graph* g, std::vector<ControlFlowInfo>* info) {
   src_info.iter_level = 0;
 
   string frame_name;
-  std::deque<const Node*> ready;
+  std::deque<Node*> ready;
   ready.push_back(src_node);
   while (!ready.empty()) {
-    const Node* curr_node = ready.front();
+    Node* curr_node = ready.front();
     ready.pop_front();
     const ControlFlowInfo& curr_info = (*info)[curr_node->id()];
     const Node* frame = curr_info.frame;
@@ -336,6 +384,7 @@ Status BuildControlFlowInfo(Graph* g, std::vector<ControlFlowInfo>* info) {
     int iter_level = curr_info.iter_level;
 
     if (IsExit(curr_node)) {
+      // Exit to the parent frame.
       const ControlFlowInfo& parent_info = (*info)[parent->id()];
       frame = parent_info.frame;
       parent = parent_info.parent_frame;
@@ -343,8 +392,11 @@ Status BuildControlFlowInfo(Graph* g, std::vector<ControlFlowInfo>* info) {
       iter_level = parent_info.iter_level;
     }
 
+    // Optimize colocation for control flow nodes.
+    OptimizeControlFlowColocation(curr_node);
+
     for (const Edge* out_edge : curr_node->out_edges()) {
-      const Node* out = out_edge->dst();
+      Node* out = out_edge->dst();
       int out_id = out->id();
       ControlFlowInfo* out_info = &(*info)[out_id];
       const Node* out_parent = out_info->parent_frame;
@@ -363,8 +415,8 @@ Status BuildControlFlowInfo(Graph* g, std::vector<ControlFlowInfo>* info) {
         if (is_visited) {
           const string& parent_name = (*info)[out_parent->id()].frame_name;
           if (parent_name != frame_name || iter_level != out_info->iter_level) {
-            return errors::InvalidArgument(
-                "All inputs to Enter must be from the same frame and level.");
+            return errors::InvalidArgument("All inputs to node ", out->name(),
+                                           " must be from the same frame.");
           }
         } else {
           out_info->frame = out;
@@ -372,18 +424,16 @@ Status BuildControlFlowInfo(Graph* g, std::vector<ControlFlowInfo>* info) {
           TF_RETURN_IF_ERROR(
               GetNodeAttr(out->def(), "frame_name", &out_info->frame_name));
           if (out_info->frame_name.empty()) {
-            return errors::InvalidArgument(
-                "Enter must have a non-empty frame name.");
+            return errors::InvalidArgument("The Enter node ", out->name(),
+                                           " must have a frame name.");
           }
           out_info->iter_level = 0;
         }
       } else if (IsNextIteration(out)) {
         if (is_visited) {
-          if (out_info->frame_name != frame_name ||
-              out_info->iter_level != (iter_level + 1)) {
-            return errors::InvalidArgument(
-                "All inputs to NextIteration must be from the same frame "
-                "and level.");
+          if (out_info->frame_name != frame_name) {
+            return errors::InvalidArgument("All inputs to node ", out->name(),
+                                           " must be from the same frame.");
           }
         } else {
           out_info->frame = frame;
@@ -394,8 +444,8 @@ Status BuildControlFlowInfo(Graph* g, std::vector<ControlFlowInfo>* info) {
       } else {
         if (is_visited) {
           if (out_info->frame_name != frame_name) {
-            return errors::InvalidArgument(
-                "All inputs to a node must be from the same frame.");
+            return errors::InvalidArgument("All inputs to node ", out->name(),
+                                           " must be from the same frame.");
           }
         } else {
           out_info->frame = frame;
@@ -575,7 +625,6 @@ Status AddControlLoop(const PartitionOptions& opts, Graph* g, const Node* src,
 // TODO(yuanbyu): It might be simpler if we convert MemoryType to
 // DeviceType for the inputs/outputs of each node.
 Status BuildMemoryDeviceInfo(const Graph& g, GraphInfo* info) {
-  Status status;
   MemoryTypeVector input_memory_types;
   MemoryTypeVector output_memory_types;
 
@@ -590,14 +639,9 @@ Status BuildMemoryDeviceInfo(const Graph& g, GraphInfo* info) {
                               node->assigned_device_name(), "'");
     }
 
-    input_memory_types.clear();
-    input_memory_types.resize(node->num_inputs());
-    output_memory_types.clear();
-    output_memory_types.resize(node->num_outputs());
-    status = MemoryTypesForNode(g.op_registry(), DeviceType(parsed.type),
-                                node->def(), &input_memory_types,
-                                &output_memory_types);
-    if (!status.ok()) return status;
+    TF_RETURN_IF_ERROR(MemoryTypesForNode(
+        g.op_registry(), DeviceType(parsed.type), node->def(),
+        &input_memory_types, &output_memory_types));
 
     int node_id = node->id();
     info->device_types[node_id] = DeviceType(parsed.type);
@@ -608,7 +652,7 @@ Status BuildMemoryDeviceInfo(const Graph& g, GraphInfo* info) {
       info->output_types[{node_id, i}] = output_memory_types[i];
     }
   }
-  return status;
+  return Status::OK();
 }
 
 // Each participating device needs to decide a) if there is a next iteration,
@@ -1053,7 +1097,7 @@ Status Partition(const PartitionOptions& opts, Graph* g,
 
   // Set versions
   for (auto& it : *partitions) {
-    it.second.set_version(g->version());
+    it.second.mutable_versions()->CopyFrom(g->versions());
   }
 
   // Set the start times for recvs at the very end.

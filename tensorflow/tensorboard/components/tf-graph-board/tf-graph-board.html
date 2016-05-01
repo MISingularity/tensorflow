@@ -1,7 +1,7 @@
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../tf-graph/tf-graph.html">
 <link rel="import" href="../tf-graph-info/tf-graph-info.html">
-<link rel="import" href="../../bower_components/paper-progress/paper-progress.html">
+<link rel="import" href="../paper-progress/paper-progress.html">
 <!-- Element for putting tf-graph and tf-graph-info side by side.
 
 Example
@@ -113,14 +113,16 @@ paper-progress {
 <div class$="[[_getContainerClass(progress)]]">
   <div id="main">
     <tf-graph id="graph"
-              graph-hierarchy="[[graphHierarchy]]"
+              graph-hierarchy="{{graphHierarchy}}"
+              basic-graph="[[graph]]"
+              hierarchy-params="[[hierarchyParams]]"
               render-hierarchy="{{_renderHierarchy}}"
               selected-node="{{_selectedNode}}"
               highlighted-node="{{_highlightedNode}}"
               color-by="[[colorBy]]"
               color-by-params="{{colorByParams}}"
               graph-name="[[graphName]]"
-              progress="[[progress]]"
+              progress="{{progress}}"
     ></tf-graph>
   </div>
   <div id="info">

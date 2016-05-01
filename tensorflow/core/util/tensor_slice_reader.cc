@@ -15,15 +15,18 @@ limitations under the License.
 
 #include "tensorflow/core/util/tensor_slice_reader.h"
 
+#include <vector>
+#include "tensorflow/core/framework/versions.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/gtl/stl_util.h"
 #include "tensorflow/core/lib/io/iterator.h"
 #include "tensorflow/core/lib/io/match.h"
 #include "tensorflow/core/lib/io/table.h"
 #include "tensorflow/core/lib/io/table_options.h"
+#include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/protobuf.h"
-#include "tensorflow/core/public/env.h"
+#include "tensorflow/core/public/version.h"
 #include "tensorflow/core/util/saved_tensor_slice_util.h"
 #include "tensorflow/core/util/tensor_slice_util.h"
 
@@ -92,6 +95,10 @@ Status OpenTableTensorSliceReader(const string& fname,
   return s;
 }
 
+TensorSliceReader::TensorSliceReader(const string& filepattern)
+    : TensorSliceReader(filepattern, OpenTableTensorSliceReader,
+                        kLoadAllShards) {}
+
 TensorSliceReader::TensorSliceReader(const string& filepattern,
                                      OpenTableFunction open_function)
     : TensorSliceReader(filepattern, open_function, kLoadAllShards) {}
@@ -154,6 +161,10 @@ void TensorSliceReader::LoadShard(int shard) const {
         fname);
     return;
   }
+  status_ = CheckVersions(sts.meta().versions(), TF_CHECKPOINT_VERSION,
+                          TF_CHECKPOINT_VERSION_MIN_PRODUCER, "Checkpoint",
+                          "checkpoint");
+  if (!status_.ok()) return;
   for (const SavedSliceMeta& ssm : sts.meta().tensor()) {
     TensorShape ssm_shape(ssm.shape());
     for (const TensorSliceProto& tsp : ssm.slice()) {
@@ -238,6 +249,28 @@ bool TensorSliceReader::HasTensor(const string& name, TensorShape* shape,
   } else {
     return false;
   }
+}
+
+TensorSliceReader::VarToShapeMap TensorSliceReader::GetVariableToShapeMap()
+    const {
+  VarToShapeMap name_to_shape;
+  if (status().ok()) {
+    for (auto e : Tensors()) {
+      name_to_shape[e.first] = e.second->shape();
+    }
+  }
+  return name_to_shape;
+}
+
+const string TensorSliceReader::DebugString() const {
+  string shape_str;
+  if (status().ok()) {
+    for (auto e : Tensors()) {
+      strings::StrAppend(&shape_str, e.first, " ",
+                         e.second->shape().DebugString(), "\n");
+    }
+  }
+  return shape_str;
 }
 
 }  // namespace checkpoint
