@@ -4,7 +4,7 @@ load("//google/protobuf:protobuf.bzl", "cc_proto_library")
 load("//google/protobuf:protobuf.bzl", "py_proto_library")
 
 # configure may change the following lines to '.X.Y' or similar
-CUDA_VERSION = ""
+CUDA_VERSION = ".7.5"
 
 CUDNN_VERSION = ""
 

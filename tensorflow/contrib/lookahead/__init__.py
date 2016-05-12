@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2016 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""contrib module containing volatile or experimental code."""
+
+"""Ops for CTC (Connectionist Temporal Classification).
+
+@@ctc_loss
+@@ctc_greedy_decoder
+@@ctc_beam_search_decoder
+
+"""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Add projects here, they will show up under tf.contrib.
-from tensorflow.contrib import lookahead
-from tensorflow.contrib import ctc
-from tensorflow.contrib import distributions
-from tensorflow.contrib import framework
-from tensorflow.contrib import layers
-from tensorflow.contrib import linear_optimizer
-from tensorflow.contrib import lookup
-from tensorflow.contrib import losses
-from tensorflow.contrib import testing
-from tensorflow.contrib import util
+# pylint: disable=unused-import,wildcard-import
+from tensorflow.contrib.lookahead.lookahead_ops import *

@@ -504,6 +504,19 @@ tf_kernel_library(
         "//tensorflow/core:lib",
         "//tensorflow/core/util/ctc:ctc_beam_search_lib",
         "//tensorflow/core/util/ctc:ctc_loss_calculator_lib",
+        "//tensorflow/core/kernels/warp-ctc/tests:ctc_gpu",
+    ],
+    alwayslink = 1,
+)
+
+tf_kernel_library(
+    name = "lookahead_ops",
+    prefix = "lookahead",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:lookahead_ops_op_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
     ],
 )
 
