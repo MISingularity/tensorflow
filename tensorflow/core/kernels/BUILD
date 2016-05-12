@@ -507,6 +507,17 @@ tf_kernel_library(
     ],
 )
 
+tf_kernel_library(
+    name = "lookahead_ops",
+    prefix = "lookahead",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:lookahead_ops_op_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+    ],
+)
+
 tf_cc_test(
     name = "control_flow_ops_test",
     size = "small",

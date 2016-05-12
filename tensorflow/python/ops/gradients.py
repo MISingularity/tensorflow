@@ -479,7 +479,7 @@ def gradients(ys,
                 # pylint: enable=protected-access
               else:
                 in_grads = _AsList(grad_fn(op, *out_grads))
-              _VerifyGeneratedGradients(in_grads, op)
+              #_VerifyGeneratedGradients(in_grads, op)
               if gate_gradients and len(
                   [x for x in in_grads if x is not None]) > 1:
                 in_grads = control_flow_ops.tuple(in_grads)
