@@ -22,13 +22,16 @@ limitations under the License.
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/util/ctc/ctc_loss_calculator.h"
+#include "tensorflow/core/kernels/ctc_loss_op.h"
 #include "tensorflow/core/util/sparse/sparse_tensor.h"
 
 namespace tensorflow {
 
 typedef Eigen::ThreadPoolDevice CPUDevice;
+typedef Eigen::GpuDevice GPUDevice;
 
-class CTCLossOp : public OpKernel {
+template<>
+class CTCLossOp<CPUDevice> : public OpKernel {
   typedef Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
                                          Eigen::RowMajor> >
       InputMap;
@@ -157,6 +160,6 @@ class CTCLossOp : public OpKernel {
   TF_DISALLOW_COPY_AND_ASSIGN(CTCLossOp);
 };
 
-REGISTER_KERNEL_BUILDER(Name("CTCLoss").Device(DEVICE_CPU), CTCLossOp);
+REGISTER_KERNEL_BUILDER(Name("CTCLoss").Device(DEVICE_CPU), CTCLossOp<CPUDevice>);
 
 }  // end namespace tensorflow

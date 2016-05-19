@@ -21,6 +21,7 @@ from __future__ import division
 from __future__ import print_function
 
 import sys
+import tensorflow as tf
 
 from tensorflow.core.framework import types_pb2
 from tensorflow.python.framework import ops
@@ -79,6 +80,27 @@ def ctc_loss(inputs, labels, sequence_length,
       inputs,
       labels.indices,
       labels.values,
+      sequence_length,
+      preprocess_collapse_repeated=preprocess_collapse_repeated,
+      ctc_merge_repeated=ctc_merge_repeated)
+
+  return loss
+
+def warp_ctc_loss(inputs, labels, sequence_length,
+                  preprocess_collapse_repeated=False, ctc_merge_repeated=True):
+  if not isinstance(labels, ops.SparseTensor):
+    raise TypeError("Expected labels to be a SparseTensor")
+
+  tmps1 = tf.slice(inputs, [0, 0, 0], [-1, -1, int(tf.Tensor.get_shape(inputs)[2] - 1)])
+  tmps2 = tf.slice(inputs, [0, 0, int(tf.Tensor.get_shape(inputs)[2] - 1)], [-1, -1, 1])
+  inputs = tf.concat(2, [tmps2, tmps1])
+
+  value_1 = tf.ones(tf.Tensor.get_shape(labels.values),dtype=tf.int32)
+  new_values = tf.add(labels.values, value_1)
+  loss, _ = gen_ctc_ops._ctc_loss(
+      inputs,
+      labels.indices,
+      new_values,
       sequence_length,
       preprocess_collapse_repeated=preprocess_collapse_repeated,
       ctc_merge_repeated=ctc_merge_repeated)
