@@ -21,6 +21,7 @@ from __future__ import division
 from __future__ import print_function
 
 import sys
+import tensorflow as tf
 
 from tensorflow.core.framework import types_pb2
 from tensorflow.python.framework import ops
@@ -84,7 +85,6 @@ def ctc_loss(inputs, labels, sequence_length,
       ctc_merge_repeated=ctc_merge_repeated)
 
   return loss
-
 
 # pylint: disable=unused-argument
 @ops.RegisterGradient("CTCLoss")

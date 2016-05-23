@@ -51,8 +51,8 @@ class CTCLossTest(tf.test.TestCase):
 
     inputs_t = tf.constant(inputs)
 
-    with self.test_session(use_gpu=False) as sess:
-      loss = tf.contrib.ctc.ctc_loss(inputs=inputs_t,
+    with self.test_session(use_gpu=True) as sess:
+      loss = tf.contrib.warpctc.warp_ctc_loss(inputs=inputs_t,
                                      labels=labels,
                                      sequence_length=seq_lens)
       grad = tf.gradients(loss, [inputs_t])[0]
