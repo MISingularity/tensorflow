@@ -25,4 +25,4 @@ before_script:
   - export PATH=/usr/local/cuda/bin:$PATH
 script:
   - cat input | ./configure
-  - bazel test tensorflow/contrib/warpctc:all --config=cuda --test_output=all --copt=-DCTC_DISABLE_OMP
+  - bazel test tensorflow/contrib/warpctc:all --test_output=all --copt=-DCTC_DISABLE_OMP
