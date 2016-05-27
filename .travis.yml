@@ -13,7 +13,7 @@ before_install:
   - sudo dpkg -i cuda-repo-ubuntu1204_7.0-28_amd64.deb
   - git submodule update --init
   - sudo apt-get update -qq
-  - sudo apt-get install -qq python2.7 libgflags-dev libgoogle-glog-dev libboost1.53-all-dev g++-4.9 tup cuda && sudo ldconfig
+  - sudo apt-get install -qq python2.7 libgflags-dev libgoogle-glog-dev libboost1.53-all-dev g++-4.9 tup cuda swig && sudo ldconfig
 install:
   - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 99
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 99
