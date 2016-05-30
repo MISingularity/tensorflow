@@ -21,6 +21,7 @@
 #include "tensorflow/core/lib/core/status.h"
 
 namespace tensorflow {
+
 namespace ffmpeg {
 
 // Gets a temp filename in an appropriate location.

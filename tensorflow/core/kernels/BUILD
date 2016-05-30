@@ -578,6 +578,31 @@ tf_kernel_library(
     ],
 )
 
+tf_kernel_library(
+    name = "lookahead_ops",
+    prefix = "lookahead",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:lookahead_ops_op_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+    ],
+)
+
+tf_kernel_library(
+    name = "warpctc_ops",
+    prefix = "warpctc",
+    deps = [
+        ":bounds_check",
+        ":ops_util",
+        "//tensorflow/core:warpctc_ops_op_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core/kernels/warp-ctc/tests:warpctc",
+    ],
+    alwayslink = 1,
+)
+
 tf_cc_test(
     name = "control_flow_ops_test",
     size = "small",

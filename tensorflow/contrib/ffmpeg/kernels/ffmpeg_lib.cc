@@ -23,6 +23,9 @@
 #include <sys/wait.h>
 #include <tuple>
 #include <unistd.h>
+#include <thread>
+#include <stdio.h>
+#include <iostream>
 
 #include <vector>
 
@@ -52,7 +55,7 @@ std::vector<string> FfmpegCommandLine(const string& input_filename,
     "-f", input_format_id,  // eg: "mp3"
     "-probesize", StrCat(kDefaultProbeSize),
     "-i", input_filename,
-    "-loglevel", "info",  // Enable verbose logging to support debugging.
+    "-loglevel", "quiet",  // Enable verbose logging to support debugging.
     "-map_metadata", "-1",  // Copy global metadata from input to output.
     "-vn",  // No video recording.
     "-ac:a:0", StrCat(channel_count),
@@ -64,6 +67,7 @@ std::vector<string> FfmpegCommandLine(const string& input_filename,
     StrCat(output_filename)
   };
 }
+
 
 [[noreturn]] int ExecuteFfmpeg(const std::vector<string>& args) {
   std::vector<char*> args_chars;
@@ -175,8 +179,13 @@ string GetTempFilename(const string& extension) {
       continue;
     }
     struct stat statbuf;
+    std::stringstream ss;
+    ss << std::this_thread::get_id();
+    uint64_t id = std::stoull(ss.str());
+    int id_ = (int)id;
+    //printf("%d\n", id_);
     if (!stat(dir, &statbuf) && S_ISDIR(statbuf.st_mode)) {
-      return io::JoinPath(dir, StrCat("tmp_file_", getpid(), ".", extension));
+      return io::JoinPath(dir, StrCat("tmp_file_", getpid(), "_", id_, ".", extension));
     }
   }
   LOG(FATAL) << "No temp directory found.";
@@ -193,6 +202,9 @@ Status ReadAudioFile(const string& filename,
       FfmpegCommandLine(filename, output_filename, audio_format_id,
                         samples_per_second, channel_count);
 
+  //for(int i = 0;i < args.size();i ++)
+    //printf("%s ",args[i].c_str());
+  //printf("\n");
   // Execute ffmpeg and report errors.
   pid_t child_pid = ::fork();
   if (child_pid < 0) {
