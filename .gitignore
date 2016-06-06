@@ -24,4 +24,7 @@ node_modules
 /pip_test
 /_python_build
 *.pyc
-__pycache__
+__pycache_
+
+# weiwan add
+package.sh

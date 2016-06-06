@@ -16,6 +16,7 @@ py_library(
         "//tensorflow/contrib/bayesflow:bayesflow_py",
         "//tensorflow/contrib/copy_graph:copy_graph_py",
         "//tensorflow/contrib/ctc:ctc_py",
+        "//tensorflow/contrib/dynamicsplit:dynamicsplit_py",
         "//tensorflow/contrib/distributions:distributions_py",
         "//tensorflow/contrib/ffmpeg:ffmpeg_ops_py",
         "//tensorflow/contrib/framework:framework_py",
