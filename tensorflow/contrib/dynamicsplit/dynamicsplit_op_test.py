@@ -27,10 +27,14 @@ class DynamicSplitTest(tf.test.TestCase):
   def _test(self, args, expected_out=None, expected_err_re=None):
 
     with self.test_session(use_gpu=False) as sess:
+      #print("before define ops")
       dy_split = tf.contrib.dynamicsplit.dynamicsplit(**args)
-     
+      #print("after define ops")     
+
       if expected_err_re is None:
+        #print("before run")
         out = sess.run(dy_split)
+        #print("after run")
         if out.dtype == np.float32:
           self.assertAllClose(out, expected_out)
         else:

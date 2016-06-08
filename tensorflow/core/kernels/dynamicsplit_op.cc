@@ -39,12 +39,14 @@ class DynamicSplitOp : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    //std::cout << "start compute" << std::endl;
     const Tensor* records;
     const Tensor* output_type;
     OP_REQUIRES_OK(ctx, ctx->input("record", &records));
     OP_REQUIRES_OK(ctx, ctx->input("output_type", &output_type));
 
     auto records_t = records->flat<string>();
+
     int64 records_size = records_t.size();
     OP_REQUIRES(ctx, records_size == 1, 
                 errors::InvalidArgument("There should be only 1 record but has "                , records_size));
@@ -59,8 +61,9 @@ class DynamicSplitOp : public OpKernel {
 
       // allocate for output
       Tensor *out = nullptr;
-      TensorShape s({fields.size()});
-      output.allocate(0, s, &out);
+      TensorShape output_shape;
+      output_shape.AddDim(fields.size());
+      output.allocate(0, output_shape, &out);
    
       // Check each field in the record
       for (int f = 0; f < fields.size(); ++f) {
@@ -104,6 +107,7 @@ class DynamicSplitOp : public OpKernel {
         }
       }
     }
+  //std::cout << "end compute" << std::endl; 
   }
 
  private:

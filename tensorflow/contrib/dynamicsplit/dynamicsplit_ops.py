@@ -35,7 +35,8 @@ ops.NoGradient("DynamicSplit")
 
 
 @ops.RegisterShape("DynamicSplit")
-def _DecodeCSVShape(op):  # pylint: disable=invalid-name
+def _DynamicSplitShape(op):  # pylint: disable=invalid-name
+  #print("register shape")
   """Shape function for the DynamicSplit op."""
   input_shape = op.inputs[0].get_shape()
   # Optionally check that all of other inputs are scalar or empty.
@@ -44,7 +45,7 @@ def _DecodeCSVShape(op):  # pylint: disable=invalid-name
     if default_input_shape[0] > 1:
       raise ValueError(
           "Shape of a default must be a length-0 or length-1 vector.")
-  return [input_shape] * len(op.outputs)
+  return [tensor_shape.unknown_shape()]
 
 def dynamicsplit(record, output_type, field_delim=None):
   split_res = gen_dynamicsplit_ops._dynamic_split(
