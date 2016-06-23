@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -253,3 +253,8 @@ class Template(object):
       with variable_scope.variable_op_scope([], None, self._name) as vs:
         self._var_scope = vs
         return self._call_func(args, kwargs, check_for_new_variables=False)
+
+  @property
+  def var_scope(self):
+    """Returns the variable scope object created by this Template."""
+    return self._var_scope

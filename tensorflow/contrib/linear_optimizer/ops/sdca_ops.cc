@@ -1,4 +1,4 @@
-/* Copyright 2016 Google Inc. All Rights Reserved.
+/* Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ REGISTER_OP("SdcaSolver")
     .Attr("loss_type: {'logistic_loss', 'squared_loss', 'hinge_loss'}")
     .Attr("num_sparse_features: int >= 0")
     .Attr("num_dense_features: int >= 0")
-    .Attr("l1: float >= 0")
-    .Attr("l2: float >= 1")
+    .Attr("l1: float")
+    .Attr("l2: float")
     .Attr("num_inner_iterations: int >= 1")
     .Attr("container: string")
     .Attr("solver_uuid: string")
@@ -77,8 +77,8 @@ dense_weights: a list of vectors where the value is the weight associated with
 REGISTER_OP("SdcaShrinkL1")
     .Attr("num_sparse_features: int >= 0")
     .Attr("num_dense_features: int >= 0")
-    .Attr("l1: float >= 0")
-    .Attr("l2: float >= 1")
+    .Attr("l1: float")
+    .Attr("l2: float")
     .Input("sparse_weights: Ref(num_sparse_features * float)")
     .Input("dense_weights: Ref(num_dense_features * float)")
     .Doc(R"doc(

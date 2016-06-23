@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2016 Google Inc. All Rights Reserved.
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 # This script tears down any existing TensorFlow cluster, consisting of
 # services, replication controllers and pods, before creating a new cluster.
 # The cluster containers a number of parameter server services and a number of
-# worker services. The paramater servers will hold parameters of the ML model,
+# worker services. The parameter servers will hold parameters of the ML model,
 # e.g., weights and biases of the NN layers, while the workers will hold the
 # TensorFlow ops.
 #
@@ -45,7 +45,7 @@
 #   updates.
 #
 #
-# This script obeys values in the folllowing environment variables:
+# This script obeys values in the following environment variables:
 #   TF_DIST_GRPC_SERVER_URLS:     If it is set to a list of valid server urls,
 #                                 separated with spaces or commas
 #                                 (e.g., "grpc://1.2.3.4:2222 grpc//5.6.7.8:2222"),

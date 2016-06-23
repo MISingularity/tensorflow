@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@ from __future__ import print_function
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
+from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import constant_op
 from tensorflow.python.ops import data_flow_ops
 from tensorflow.python.ops import math_ops
 
@@ -170,7 +170,6 @@ def embedding_lookup(params, ids, partition_strategy="mod", name=None,
       return ret
 
 
-# TODO(lif): Add support for higher-rank SparseTensors
 def embedding_lookup_sparse(params, sp_ids, sp_weights,
                             partition_strategy="mod",
                             name=None,

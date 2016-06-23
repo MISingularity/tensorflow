@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ of a tensor and change the shape of a tensor.
 @@reshape
 @@squeeze
 @@expand_dims
+@@meshgrid
 
 ## Slicing and Joining
 
@@ -54,6 +55,7 @@ or join multiple tensors together.
 @@reverse_sequence
 @@reverse
 @@transpose
+@@extract_image_patches
 @@space_to_batch
 @@batch_to_space
 @@space_to_depth
@@ -73,22 +75,25 @@ from __future__ import print_function
 import sys
 import numpy as np
 
+from tensorflow.python.framework import common_shapes
+from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import tensor_util
-from tensorflow.python.ops import common_shapes
-from tensorflow.python.ops import constant_op
+# 'Constant' gets imported in the module 'array_ops'.
+from tensorflow.python.framework.constant_op import constant
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import logging_ops
-# 'Constant' gets imported in the module 'array_ops'.
-from tensorflow.python.ops.constant_op import constant
 # go/tf-wildcard-import
 # pylint: disable=wildcard-import
 from tensorflow.python.ops.gen_array_ops import *
 # pylint: enable=wildcard-import
 
+
+# Used for slicing to specify a new 1 size dimension
+newaxis = None
 
 # We override the 'slice' for the "slice" op, so we keep python's
 # existing 'slice' for later use in this module.
@@ -99,11 +104,174 @@ _baseslice = slice
 listdiff = gen_array_ops.list_diff
 
 
+def shape(input, name=None):
+  """Returns the shape of a tensor.
+
+  This operation returns a 1-D integer tensor representing the shape of `input`.
+
+  For example:
+
+  ```python
+  # 't' is [[[1, 1, 1], [2, 2, 2]], [[3, 3, 3], [4, 4, 4]]]
+  shape(t) ==> [2, 2, 3]
+  ```
+
+  Args:
+    input: A `Tensor` or `SparseTensor`.
+    name: A name for the operation (optional).
+
+  Returns:
+    A `Tensor` of type `int32`.
+  """
+  with ops.op_scope([input], name, "Shape") as name:
+    if isinstance(input, ops.SparseTensor):
+      return gen_math_ops.cast(input.shape, dtypes.int32)
+    else:
+      return gen_array_ops.shape(input, name=name)
+
+
+def size(input, name=None):
+  """Returns the size of a tensor.
+
+  This operation returns an integer representing the number of elements in
+  `input`.
+
+  For example:
+
+  ```python
+  # 't' is [[[1, 1, 1], [2, 2, 2]], [[3, 3, 3], [4, 4, 4]]]]
+  size(t) ==> 12
+  ```
+
+  Args:
+    input: A `Tensor` or `SparseTensor`.
+    name: A name for the operation (optional).
+
+  Returns:
+    A `Tensor` of type `int32`.
+  """
+  with ops.op_scope([input], name, "Size") as name:
+    if isinstance(input, ops.SparseTensor):
+      return gen_math_ops._prod(gen_math_ops.cast(input.shape, dtypes.int32), 0,
+                                name=name)
+    else:
+      return gen_array_ops.size(input, name=name)
+
+
+def rank(input, name=None):
+  """Returns the rank of a tensor.
+
+  This operation returns an integer representing the rank of `input`.
+
+  For example:
+
+  ```python
+  # 't' is [[[1, 1, 1], [2, 2, 2]], [[3, 3, 3], [4, 4, 4]]]
+  # shape of tensor 't' is [2, 2, 3]
+  rank(t) ==> 3
+  ```
+
+  **Note**: The rank of a tensor is not the same as the rank of a matrix. The
+  rank of a tensor is the number of indices required to uniquely select each
+  element of the tensor. Rank is also known as "order", "degree", or "ndims."
+
+  Args:
+    input: A `Tensor` or `SparseTensor`.
+    name: A name for the operation (optional).
+
+  Returns:
+    A `Tensor` of type `int32`.
+  """
+  with ops.op_scope([input], name, "Rank") as name:
+    if isinstance(input, ops.SparseTensor):
+      return gen_array_ops.size(input.shape, name=name)
+    else:
+      return gen_array_ops.rank(input, name=name)
+
+
 # DEPRECATED use init_ops.zeros_initializer
 # TODO(irving) Move it to init_ops.py
 def zeros_initializer(shape, dtype=dtypes.float32):
   """An adaptor for zeros() to match the Initializer spec."""
   return zeros(shape, dtype)
+
+
+def _NewSliceHelper(tensor, slice_spec):
+  """Overload for Tensor.__getitem__.
+
+  This operation extracts the specified region from the tensor.
+  The notation is similar to numpy with the restriction that
+  currently only support basic indexing. That means that
+  using a tensor as input is not currently allowed
+
+  Args:
+    tensor: An ops.Tensor object.
+    slice_spec: The arguments to Tensor.__getitem__.
+
+  Returns:
+    The appropriate slice of "tensor", based on "slice_spec".
+
+  Raises:
+    ValueError: If a slice range is negative size.
+    TypeError: If the slice indices aren't int, slice, or Ellipsis.
+  """
+
+  if not isinstance(slice_spec, (list, tuple)):
+    slice_spec = [slice_spec]
+
+  begin, end, strides = [], [], []
+  index = 0
+
+  new_axis_mask, shrink_axis_mask = 0, 0
+  begin_mask, end_mask = 0, 0
+  ellipse_mask = 0
+  for s in slice_spec:
+    if isinstance(s, _baseslice):
+      strides.append(s.step if s.step is not None else 1)
+      # python doesn't always use None when constructing ranges
+      # for example a[:] gives slice(None,sys.maxsize,None)
+      # whereas a[::1] gives slice(None,None,None)
+      if s.start is not None and s.start is not sys.maxsize:
+        begin.append(s.start)
+      else:
+        begin.append(0)
+        begin_mask |= (1 << index)
+      if s.stop is not None and s.stop != sys.maxsize:
+        end.append(s.stop)
+      else:
+        end.append(0)
+        end_mask |= (1 << index)
+    elif s is Ellipsis:
+      begin.append(0)
+      end.append(0)
+      strides.append(1)
+      ellipse_mask |= (1 << index)
+    elif s is newaxis:
+      begin.append(0)
+      end.append(0)
+      strides.append(1)
+      new_axis_mask |= (1 << index)
+    else:
+      try:
+        s = int(s)
+      except TypeError:
+        raise TypeError("Bad slice index %s of type %s" % (s, type(s)))
+
+      begin.append(s)
+      end.append(s + 1)
+      strides.append(1)
+      shrink_axis_mask |= (1 << index)
+    index += 1
+
+  return strided_slice(tensor,
+                       pack(begin),
+                       pack(end),
+                       pack(strides),
+                       begin_mask=begin_mask,
+                       end_mask=end_mask,
+                       shrink_axis_mask=shrink_axis_mask,
+                       new_axis_mask=new_axis_mask,
+                       ellipse_mask=ellipse_mask)
 
 
 # pylint: disable=undefined-variable,protected-access
@@ -220,6 +388,110 @@ def slice(input_, begin, size, name=None):
   return gen_array_ops._slice(input_, begin, size, name=name)
 
 
+# pylint: disable=invalid-name
+def strided_slice(input_,
+                  begin,
+                  end,
+                  strides,
+                  begin_mask=0,
+                  end_mask=0,
+                  ellipse_mask=0,
+                  new_axis_mask=0,
+                  shrink_axis_mask=0,
+                  name=None):
+  """Extracts a strided slice from a tensor.
+
+  To a first order, this operation extracts a slice of size `end - begin`
+  from a tensor `input`
+  starting at the location specified by `begin`. The slice continues by adding
+  `stride` to the `begin` index until all dimensions are not less than `end`.
+  Note that components of stride can be negative, which causes a reverse
+  slice.
+
+  This operation can be thought of an encoding of a numpy style sliced
+  range. Given a python slice input[<spec0>, <spec1>, ..., <specn>]
+  this function will be called as follows.
+
+  `begin`, `end`, and `strides` will be all length n. n is in general
+  not the same dimensionality as `input`.
+
+  For the ith spec,
+  `begin_mask`, `end_mask`, `ellipse_mask`, `new_axis_mask`,
+  and `shrink_axis_mask` will have the ith bit corrsponding to
+  the ith spec.
+
+  If the ith bit of `begin_mask` is non-zero, `begin[i]` is ignored and
+  the fullest possible range in that dimension is used instead.
+  `end_mask` works analogously, except with the end range.
+
+  `foo[5:,:,:3]` on a 7x8x9 tensor is equivalent to `foo[5:7,0:8,0:3]`.
+  `foo[::-1]` reverses a tensor with shape 8.
+
+
+  If the ith bit of `ellipse_mask`, as many unspecified dimensions
+  as needed will be inserted between other dimensions. Only one
+  non-zero bit is allowed in `ellipse_mask`.
+
+  For example `foo[3:5,...,4:5]` on a shape 10x3x3x10 tensor is
+  equivalent to `foo[3:5,:,:,4:5]` and
+  `foo[3:5,...]` is equivalent to `foo[3:5,:,:,:]`.
+
+  If the ith bit of `new_axis_mask` is one, then a `begin`,
+  `end`, and `stride` are ignored and a new length 1 dimension is
+  added at this point in the output tensor.
+
+  For example `foo[3:5,4]` on a 10x8 tensor produces a shape 2 tensor
+  whereas `foo[3:5,4:5]` produces a shape 2x1 tensor with shrink_mask
+  being 1<<1 == 2.
+
+  If the ith bit of `shrink_axis_mask` is one, then `begin`,
+  `end[i]`, and `stride[i]` are used to do a slice in the appropriate
+  dimension, but the output tensor will be reduced in dimensionality
+  by one. This is only valid if the ith entry of slice[i]==1.
+
+  NOTE: `begin` and `end` are zero-indexed`.
+  `strides` entries must be non-zero.
+
+
+  ```
+  # 'input' is [[[1, 1, 1], [2, 2, 2]],
+  #             [[3, 3, 3], [4, 4, 4]],
+  #             [[5, 5, 5], [6, 6, 6]]]
+  tf.slice(input, [1, 0, 0], [2, 1, 3], [1, 1, 1]) ==> [[[3, 3, 3]]]
+  tf.slice(input, [1, 0, 0], [2, 2, 3], [1, 1, 1]) ==> [[[3, 3, 3],
+                                                         [4, 4, 4]]]
+  tf.slice(input, [1, 1, 0], [2, -1, 3], [1, -1, 1]) ==>[[[4, 4, 4],
+                                                          [3, 3, 3]]]
+  ```
+
+  Args:
+    input_: A `Tensor`.
+    begin: An `int32` or `int64` `Tensor`.
+    end: An `int32` or `int64` `Tensor`.
+    strides: An `int32` or `int64` `Tensor`.
+    begin_mask: An `int32` mask.
+    end_mask: An `int32` mask.
+    ellipse_mask: An `int32` mask.
+    new_axis_mask: An `int32` mask.
+    shrink_axis_mask: An `int32` mask.
+    name: A name for the operation (optional).
+
+  Returns:
+    A `Tensor` the same type as `input`.
+  """
+  return gen_array_ops.strided_slice(input_,
+                                     begin,
+                                     end,
+                                     strides,
+                                     name=name,
+                                     begin_mask=begin_mask,
+                                     end_mask=end_mask,
+                                     ellipse_mask=ellipse_mask,
+                                     new_axis_mask=new_axis_mask,
+                                     shrink_axis_mask=shrink_axis_mask)
+
+# TODO(aselle): When gradient is added and performance verified switch
+# ops.Tensor._override_operator("__getitem__", _NewSliceHelper)
 ops.Tensor._override_operator("__getitem__", _SliceHelper)
 
 
@@ -466,12 +738,15 @@ def _ConcatShape(op):
     # Merge all the non-concat dims, and sum the concat dim to make an
     # output shape.
     concat_dim = int(concat_dim)
+    if concat_dim < 0:
+      raise ValueError("Expected concat_dim >= 0, but got %d" % concat_dim)
+
     output_shape = op.inputs[1].get_shape()
     for value in op.inputs[2:]:
       value_shape = value.get_shape()
       if value_shape.ndims is not None and concat_dim >= value_shape.ndims:
-        raise ValueError("concat_dim is out of range (values rank = %d)" %
-                         value_shape.ndims)
+        raise ValueError("Expected concat_dim in range [0, %d), but got %d" %
+                         (value_shape.ndims, concat_dim))
       before = output_shape[:concat_dim].merge_with(value_shape[:concat_dim])
       at = output_shape[concat_dim] + value_shape[concat_dim]
       after = output_shape[
@@ -555,8 +830,8 @@ def sparse_mask(a, mask_indices, name=None):
   """Masks elements of `IndexedSlices`.
 
   Given an `IndexedSlices` instance `a`, returns another `IndexedSlices` that
-  contains a subset of the slices of `a`. Only the slices at indices specified
-  in `mask_indices` are returned.
+  contains a subset of the slices of `a`. Only the slices at indices not
+  specified in `mask_indices` are returned.
 
   This is useful when you need to extract a subset of slices in an
   `IndexedSlices` object.
@@ -570,7 +845,7 @@ def sparse_mask(a, mask_indices, name=None):
   tf.shape(a.values) => [4, 10]
 
   # `b` will be the subset of `a` slices at its second and third indices, so
-  # we want to mask of its first and last indices (which are at absolute
+  # we want to mask its first and last indices (which are at absolute
   # indices 12, 45)
   b = tf.sparse_mask(a, [12, 45])
 
@@ -627,8 +902,10 @@ def split(split_dim, num_split, value, name="split"):
 
 @ops.RegisterShape("Reverse")
 def _ReverseShape(op):
+  input_shape = op.inputs[0].get_shape()
   dims_shape = op.inputs[1].get_shape().with_rank(1)
-  input_shape = op.inputs[0].get_shape().with_rank(dims_shape[0])
+  if dims_shape[0].value is not None:
+    input_shape = input_shape.with_rank(dims_shape[0])
   if input_shape.ndims is not None and input_shape.ndims > 8:
     raise ValueError(
         "tf.reverse() does not work on tensors with more than 8 dimensions")
@@ -716,9 +993,10 @@ def zeros(shape, dtype=dtypes.float32, name=None):
     A `Tensor` with all elements set to zero.
   """
   with ops.op_scope([shape], name, "zeros") as name:
-    if isinstance(shape, (list, tuple)):
+    try:
+      shape = tensor_shape.as_shape(shape)
       output = constant(0, shape=shape, dtype=dtype, name=name)
-    else:
+    except (TypeError, ValueError):
       shape = ops.convert_to_tensor(shape, dtype=dtypes.int32, name="shape")
       output = fill(shape, constant(0, dtype=dtype), name=name)
   assert output.dtype.base_dtype == dtypes.as_dtype(dtype).base_dtype
@@ -812,9 +1090,10 @@ def ones(shape, dtype=dtypes.float32, name=None):
     A `Tensor` with all elements set to 1.
   """
   with ops.op_scope([shape], name, "ones") as name:
-    if isinstance(shape, (list, tuple)):
+    try:
+      shape = tensor_shape.as_shape(shape)
       output = constant(1, shape=shape, dtype=dtype, name=name)
-    else:
+    except (TypeError, ValueError):
       shape = ops.convert_to_tensor(shape, dtype=dtypes.int32, name="shape")
       output = fill(shape, constant(1, dtype=dtype), name=name)
   assert output.dtype.base_dtype == dtypes.as_dtype(dtype).base_dtype
@@ -986,6 +1265,82 @@ def pad(tensor, paddings, mode="CONSTANT", name=None):  # pylint: disable=invali
   raise ValueError("Unknown padding mode: %s" % mode)
 
 
+def meshgrid(*args, **kwargs):
+  """Broadcasts parameters for evaluation on an N-D grid.
+
+  Given N one-dimensional coordinate arrays `*args`, returns a list `outputs`
+  of N-D coordinate arrays for evaluating expressions on an N-D grid.
+
+  Notes:
+
+  `meshgrid` supports cartesian ('xy') and matrix ('ij') indexing conventions.
+  When the `indexing` argument is set to 'xy' (the default), the broadcasting
+  instructions for the first two dimensions are swapped.
+
+  Examples:
+
+  Calling `X, Y = meshgrid(x, y)` with the tensors
+  ```prettyprint
+    x = [1, 2, 3]
+    y = [4, 5, 6]
+  ```
+  results in
+  ```prettyprint
+    X = [[1, 1, 1],
+         [2, 2, 2],
+         [3, 3, 3]]
+    Y = [[4, 5, 6],
+         [4, 5, 6],
+         [4, 5, 6]]
+  ```
+
+  Args:
+    *args: `Tensor`s with rank 1
+    indexing: Either 'xy' or 'ij' (optional, default: 'xy')
+    name: A name for the operation (optional).
+
+  Returns:
+    outputs: A list of N `Tensor`s with rank N
+  """
+  indexing = kwargs.pop("indexing", "xy")
+  name = kwargs.pop("name", "meshgrid")
+  if len(kwargs) > 0:
+    key = list(kwargs.keys())[0]
+    raise TypeError("'{}' is an invalid keyword argument "
+                    "for this function".format(key))
+
+  if indexing not in ("xy", "ij"):
+    raise ValueError("indexing parameter must be either 'xy' or 'ij'")
+
+  with ops.op_scope(args, name, "meshgrid") as name:
+    num_inputs = len(args)
+    ones = (1,) * num_inputs
+
+    asserts = [logging_ops.Assert(
+                 gen_math_ops.equal(rank(x), 1),
+                 ["Input %d needs to have rank 1: " % i, rank(x)],
+               ) for i, x in enumerate(args)]
+
+    # Prepare reshape by inserting dimensions with size 1 where needed
+    shapes = [ones[:i] + (-1,) + ones[i + 1:] for i in range(num_inputs)]
+    # Create parameters for broadcasting each tensor to the full size
+    sizes = [size(x) for x in args]
+    bcast = [sizes[:i] + [1] + sizes[i + 1:] for i in range(num_inputs)]
+
+    # By default, the numpy version swaps the instructions
+    # for the first and second dimension
+    if indexing == "xy" and num_inputs > 1:
+      shapes[0], shapes[1] = shapes[1], shapes[0]
+      bcast[0], bcast[1] = bcast[1], bcast[0]
+
+    results = []
+    with ops.control_dependencies(asserts):
+      for a, r, e in zip(args, shapes, bcast):
+        results.append(tile(reshape(a, r), e))
+
+    return results
+
+
 @ops.RegisterShape("Placeholder")
 def _PlaceholderShape(op):
   given_shape = tensor_util.TensorShapeProtoToList(op.get_attr("shape"))
@@ -1000,6 +1355,7 @@ def _PlaceholderShape(op):
 @ops.RegisterShape("RefIdentity")
 @ops.RegisterShape("StopGradient")
 @ops.RegisterShape("BatchMatrixBandPart")
+@ops.RegisterShape("QuantizeAndDequantize")
 def _UnchangedShape(op):
   return [op.inputs[0].get_shape()]
 
@@ -1038,6 +1394,138 @@ def _SliceShape(op):
       return [tensor_shape.unknown_shape(ndims=ndims)]
     else:
       return [tensor_shape.unknown_shape()]
+
+
+NEW_AXIS = -1
+SHRINK_AXIS = -2
+
+
+# PEP-8 naming
+# pylint: disable=invalid-name
+def _compute_size_of_strided_dim(spec, size):
+  unknown = None  # Document what None means here.
+  use_full_range = None  # Document other use of None.
+
+  if size is unknown or size.value is unknown:
+    return unknown
+  size = size.value
+  stride = spec.step
+  if stride is not unknown:
+    if stride == 0:
+      return unknown
+    stride = spec.step
+    valid_range = [0, size] if stride > 0 else [-1, size - 1]
+
+    # PEP-8 naming
+    # pylint: disable=invalid-name
+    def canonical(x, c):
+      if x is use_full_range:
+        return valid_range[c] if stride > 0 else valid_range[(c + 1) & 1]
+      else:
+        x_fwd = size + x if x < 0 else x  # make negative indices positive
+        return max(valid_range[0], min(valid_range[1], x_fwd))
+
+    begin = canonical(spec.start, 0)
+    end = canonical(spec.stop, 1)
+    interval_length = end - begin
+    if interval_length == 0 or ((interval_length < 0) != (stride < 0)):
+      return 0
+    else:
+      remainder = 1 if interval_length % stride != 0 else 0
+      return interval_length // stride + remainder
+  else:
+    return unknown  # unknown because stride is unknown
+
+
+@ops.RegisterShape("StridedSlice")
+def _StridedSliceShape(op):
+  """Shape function for array_ops.slice."""
+
+  input_shape = op.inputs[0].get_shape()
+  if input_shape.ndims is None:
+    return [tensor_shape.unknown_shape()]
+
+  ndims = len(input_shape)
+  begin_shape = op.inputs[1].get_shape().with_rank(1)
+  end_shape = op.inputs[2].get_shape().with_rank(1)
+  strides_shape = op.inputs[3].get_shape().with_rank(1)
+  # get constant values if available
+  begin_value = tensor_util.constant_value(op.inputs[1])
+  end_value = tensor_util.constant_value(op.inputs[2])
+  strides_value = tensor_util.constant_value(op.inputs[3])
+
+  sparse_dims = begin_shape.merge_with(end_shape).merge_with(strides_shape)[
+      0].value
+  if sparse_dims is None:
+    return [input_shape.unknown_shape()]
+
+  begin_mask = op.get_attr("begin_mask")
+  end_mask = op.get_attr("end_mask")
+  ellipse_mask = op.get_attr("ellipse_mask")
+  new_axis_mask = op.get_attr("new_axis_mask")
+  shrink_axis_mask = op.get_attr("shrink_axis_mask")
+  # find the ellipsis
+  ellipse_index = -1
+
+  # look for ellipses
+  num_add_axis_after_ellipse = 0
+  for i in range(sparse_dims):
+    if ellipse_index != -1 and ((1 << i) & new_axis_mask) != 0:
+      num_add_axis_after_ellipse += 1
+    if (1 << i) & ellipse_mask:
+      if ellipse_index != -1:
+        raise ValueError("Multiple ellipses not allowed")
+      ellipse_index = i
+  # insert a virtual ellipse if not seen
+  if ellipse_index == -1:
+    ellipse_mask |= (1 << sparse_dims)
+    sparse_dims += 1
+
+  # build the dense specification
+  dense_dims = ndims  # not accounting for newaxis and shrink
+  final_shape_gather = []
+  full_index = 0
+  dense_specs = []
+  for dim in range(sparse_dims):
+    bit = 1 << dim
+    if bit & ellipse_mask:
+      next_index = min(dense_dims -
+                       (sparse_dims - dim) + 1 + num_add_axis_after_ellipse,
+                       dense_dims)
+      while full_index < next_index:
+        dense_specs.append(_baseslice(None, None, 1))
+        final_shape_gather.append(full_index)
+        full_index += 1
+    elif bit & new_axis_mask:
+      final_shape_gather.append(NEW_AXIS)
+    else:
+      dense_specs.append(_baseslice(
+          None if (begin_mask & bit) else begin_value[dim], None if (
+              end_mask & bit) else end_value[dim], strides_value[dim]))
+      if shrink_axis_mask & bit:
+        final_shape_gather.append(SHRINK_AXIS)
+      else:
+        final_shape_gather.append(full_index)
+
+      full_index += 1
+
+  # Compute each dimensions contribution to the "processing" shape
+  final_dims = []
+  for dim in range(dense_dims):
+    final_dims.append(_compute_size_of_strided_dim(dense_specs[dim],
+                                                   input_shape.dims[dim]))
+
+  # Gather the final shape from the processing shape
+  final_shape = []
+  for index in final_shape_gather:
+    if index == NEW_AXIS:
+      final_shape.append(1)
+    elif index == SHRINK_AXIS:
+      pass
+    else:
+      final_shape.append(final_dims[index])
+
+  return [tensor_shape.TensorShape(final_shape)]
 
 
 @ops.RegisterShape("Gather")
@@ -1667,6 +2155,57 @@ def _QuantizeDequantizeShape(op):
   return common_shapes.unchanged_shape(op)
 
 
+@ops.RegisterShape("ExtractImagePatches")
+def _ExtractImagePatchesShape(op):
+  """Shape function for the ExtractImagePatches op.
+
+  Args:
+    op: An ExtractImagePatches op.
+
+  Raises:
+    ValueError: If the strides or padding are invalid.
+
+  Returns:
+    The shape of the op output.
+  """
+  images_shape = op.inputs[0].get_shape().with_rank(4)
+  batch = images_shape[0]
+  in_rows = images_shape[1]
+  in_cols = images_shape[2]
+  in_depth = images_shape[3]
+
+  ksize_b, ksize_r, ksize_c, ksize_d = op.get_attr("ksizes")
+  if ksize_b != 1 or ksize_d != 1:
+    raise ValueError("Current implementation does not yet support "
+                     "ksizes in the batch and depth dimensions.")
+
+  stride_b, stride_r, stride_c, stride_d = op.get_attr("strides")
+  if stride_b != 1 or stride_d != 1:
+    raise ValueError("Current implementation does not yet support "
+                     "strides in the batch and depth dimensions.")
+
+  rate_b, rate_r, rate_c, rate_d = op.get_attr("rates")
+  if rate_b != 1 or rate_d != 1:
+    raise ValueError("Current implementation does not yet support "
+                     "rates in the batch and depth dimensions.")
+
+  # Effective patch size, taking into account filter upsampling by rates.
+  ksize_r_eff = ksize_r + (ksize_r - 1) * (rate_r - 1)
+  ksize_c_eff = ksize_c + (ksize_c - 1) * (rate_c - 1)
+
+  padding = op.get_attr("padding")
+  out_rows, out_cols = common_shapes.get2d_conv_output_size(in_rows, in_cols,
+                                                            ksize_r_eff,
+                                                            ksize_c_eff,
+                                                            stride_r, stride_c,
+                                                            padding)
+
+  out_depth = None if in_depth is None else ksize_r * ksize_c * int(in_depth)
+  output_shape = [batch, out_rows, out_cols, out_depth]
+
+  return [tensor_shape.TensorShape(output_shape)]
+
+
 @ops.RegisterShape("SpaceToBatch")
 def _SpaceToBatchShape(op):
   """Shape function for the SpaceToBatch op.
@@ -2053,14 +2592,14 @@ def one_hot(indices, depth, on_value=None, off_value=None,
                   else None
     off_dtype = ops.convert_to_tensor(off_value).dtype.base_dtype if off_exists\
                   else None
-    
+
     if on_exists or off_exists:
       if dtype is not None:
         # Ensure provided on_value and/or off_value match dtype
         if (on_exists and on_dtype != dtype):
           raise TypeError("dtype {0} of on_value does not match " \
                           "dtype parameter {1}".format(on_dtype, dtype))
-        if (off_exists and off_dtype != dtype): 
+        if (off_exists and off_dtype != dtype):
           raise TypeError("dtype {0} of off_value does not match " \
                           "dtype parameter {1}".format(off_dtype, dtype))
       else:
@@ -2069,7 +2608,7 @@ def one_hot(indices, depth, on_value=None, off_value=None,
     elif dtype is None:
       # None of on_value, off_value, or dtype provided. Default dtype to float32
       dtype = dtypes.float32
-    
+
     if not on_exists:
       # on_value not provided: assign to value 1 of type dtype
       on_value = ops.convert_to_tensor(1, dtype, name="on_value")
@@ -2083,8 +2622,8 @@ def one_hot(indices, depth, on_value=None, off_value=None,
       raise TypeError("dtype {0} of on_value does not match " \
                       "dtype {1} of off_value".format(on_dtype, off_dtype))
 
-    return gen_array_ops._one_hot(indices, depth, on_value, 
-                                  off_value, axis, name)
+    return gen_array_ops._one_hot(indices, depth, on_value, off_value, axis,
+                                  name)
 
 
 @ops.RegisterShape("OneHot")

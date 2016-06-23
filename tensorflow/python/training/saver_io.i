@@ -1,4 +1,4 @@
-/* Copyright 2016 Google Inc. All Rights Reserved.
+/* Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ std::vector<string> GetMatchingFiles(const string& filename,
 
 void CreateDir(const string& dirname, TF_Status* out_status) {
   tensorflow::Status status = tensorflow::Env::Default()->CreateDir(dirname);
-  if (!status.ok()) {
+  if (!status.ok() && status.code() != tensorflow::error::ALREADY_EXISTS) {
     Set_TF_Status_from_Status(out_status, status);
   }
 }

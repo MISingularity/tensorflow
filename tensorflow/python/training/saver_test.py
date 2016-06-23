@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -286,6 +286,22 @@ class SaverTest(tf.test.TestCase):
           val = save.save(sess, save_path, global_step=global_step_int)
         expected_save_path = "%s-%d" % (save_path, global_step_int)
         self.assertEqual(expected_save_path, val)
+
+  def testLargeVariable(self):
+    save_path = os.path.join(self.get_temp_dir(), "large_variable")
+    with tf.Session("", graph=tf.Graph()) as sess:
+      # Declare a variable that is exactly 2GB. This should fail,
+      # because a serialized checkpoint includes other header
+      # metadata.
+      with tf.device("/cpu:0"):
+        var = tf.Variable(
+            tf.constant(False, shape=[2, 1024, 1024, 1024], dtype=tf.bool))
+      save = tf.train.Saver({var.op.name: var})
+      var.initializer.run()
+      with self.assertRaisesRegexp(
+          tf.errors.InvalidArgumentError,
+          "Tensor slice is too large to serialize"):
+        save.save(sess, save_path)
 
 
 class SaveRestoreShardedTest(tf.test.TestCase):

@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,6 +50,34 @@ def collect_named_outputs(collections, name, outputs):
       name = name[:-1]
     ops.add_to_collections(collections, (name, outputs))
   return outputs
+
+
+def constant_value(value_or_tensor, tensor_dtype=None):
+  """Returns value if value_or_tensor has a constant value.
+
+  Args:
+    value_or_tensor: A value or a `Tensor`.
+    tensor_dtype: Optional `tf.dtype`, if set it would check the tensor type.
+
+  Returns:
+    The constant value or None if it not constant.
+
+  Raises:
+    ValueError: if value_or_tensor is None or the tensor has the wrong dtype.
+  """
+  if value_or_tensor is None:
+    raise ValueError('value_or_tensor cannot be None')
+  value = value_or_tensor
+  if isinstance(value_or_tensor, ops.Tensor):
+    if tensor_dtype and value_or_tensor.dtype != tensor_dtype:
+      raise ValueError('The tensor has the wrong type %s instead of %s' % (
+          value_or_tensor.dtype, tensor_dtype))
+    if value_or_tensor.op.type == 'Const':
+      value_or_tensor.graph.prevent_feeding(value_or_tensor)
+      value = value_or_tensor.op.get_attr('value')
+    else:
+      value = None
+  return value
 
 
 def get_variable_collections(variables_collections, name):

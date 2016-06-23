@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2016 Google Inc. All Rights Reserved.
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -229,7 +229,7 @@ fi
 IMG="${USER}/tensorflow:${FINAL_TAG}"
 echo "Building docker image with image name and tag: ${IMG}"
 
-docker build -t "${IMG}" -f "${DOCKERFILE}" "${TMP_DIR}"
+docker build --no-cache -t "${IMG}" -f "${DOCKERFILE}" "${TMP_DIR}"
 if [[ $? == "0" ]]; then
   echo "docker build of ${IMG} succeeded"
 else

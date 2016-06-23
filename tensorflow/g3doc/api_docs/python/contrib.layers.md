@@ -50,6 +50,8 @@ it is applied to the activations as well.
 *  <b>`variables_collections`</b>: optional list of collections for all the variables or
     a dictionay containing a different list of collection per variable.
 *  <b>`outputs_collections`</b>: collection to add the outputs.
+*  <b>`trainable`</b>: If `True` also add variables to the graph collection
+    `GraphKeys.TRAINABLE_VARIABLES` (see tf.Variable).
 *  <b>`scope`</b>: Optional scope for `variable_op_scope`.
 
 ##### Returns:
@@ -92,8 +94,10 @@ prior to the initial matrix multiply by `weights`.
 *  <b>`reuse`</b>: whether or not the layer and its variables should be reused. To be
     able to reuse the layer scope must be given.
 *  <b>`variables_collections`</b>: Optional list of collections for all the variables or
-    a dictionay containing a different list of collection per variable.
+    a dictionary containing a different list of collections per variable.
 *  <b>`outputs_collections`</b>: collection to add the outputs.
+*  <b>`trainable`</b>: If `True` also add variables to the graph collection
+    `GraphKeys.TRAINABLE_VARIABLES` (see tf.Variable).
 *  <b>`scope`</b>: Optional scope for variable_op_scope.
 
 ##### Returns:
@@ -142,12 +146,13 @@ subtraction, it usually shouldn't hurt much either.
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If `regularizer` does not return a scalar output.
+*  <b>`ValueError`</b>: If `regularizer` does not return a scalar output, or if we find
+      no weights.
 
 
 - - -
 
-### `tf.contrib.layers.l1_regularizer(scale)` {#l1_regularizer}
+### `tf.contrib.layers.l1_regularizer(scale, scope=None)` {#l1_regularizer}
 
 Returns a function that can be used to apply L1 regularization to weights.
 
@@ -157,22 +162,21 @@ L1 regularization encourages sparsity.
 
 
 *  <b>`scale`</b>: A scalar multiplier `Tensor`. 0.0 disables the regularizer.
+*  <b>`scope`</b>: An optional op_scope name.
 
 ##### Returns:
 
-  A function with signature `l1(weights, name=None)` that apply L1
-  regularization.
+  A function with signature `l1(weights)` that apply L1 regularization.
 
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If scale is outside of the range [0.0, 1.0] or if scale is not a
-  float.
+*  <b>`ValueError`</b>: If scale is negative or if scale is not a float.
 
 
 - - -
 
-### `tf.contrib.layers.l2_regularizer(scale)` {#l2_regularizer}
+### `tf.contrib.layers.l2_regularizer(scale, scope=None)` {#l2_regularizer}
 
 Returns a function that can be used to apply L2 regularization to weights.
 
@@ -182,22 +186,21 @@ Small values of L2 can help prevent overfitting the training data.
 
 
 *  <b>`scale`</b>: A scalar multiplier `Tensor`. 0.0 disables the regularizer.
+*  <b>`scope`</b>: An optional op_scope name.
 
 ##### Returns:
 
-  A function with signature `l2(weights, name=None)` that applies L2
-  regularization.
+  A function with signature `l2(weights)` that applies L2 regularization.
 
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If scale is outside of the range [0.0, 1.0] or if scale is not a
-  float.
+*  <b>`ValueError`</b>: If scale is negative or if scale is not a float.
 
 
 - - -
 
-### `tf.contrib.layers.sum_regularizer(regularizer_list)` {#sum_regularizer}
+### `tf.contrib.layers.sum_regularizer(regularizer_list, scope=None)` {#sum_regularizer}
 
 Returns a function that applies the sum of multiple regularizers.
 
@@ -205,10 +208,11 @@ Returns a function that applies the sum of multiple regularizers.
 
 
 *  <b>`regularizer_list`</b>: A list of regularizers to apply.
+*  <b>`scope`</b>: An optional op_scope name
 
 ##### Returns:
 
-  A function with signature `sum_reg(weights, name=None)` that applies the
+  A function with signature `sum_reg(weights)` that applies the
   sum of all the input regularizers.
 
 

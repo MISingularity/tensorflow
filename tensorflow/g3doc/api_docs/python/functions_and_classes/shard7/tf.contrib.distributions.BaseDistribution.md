@@ -54,7 +54,7 @@ u = Uniform(minval, maxval)
 
 # `event_shape` is `TensorShape([])`.
 event_shape = u.get_event_shape()
-# `event_shape_t` is a `Tensor` which will evaluate to a scalar 1.
+# `event_shape_t` is a `Tensor` which will evaluate to [].
 event_shape_t = u.event_shape
 
 # Sampling returns a sample per distribution.  `samples` has shape
@@ -77,10 +77,40 @@ cum_prob_per_dist = u.cdf([[4.0, 5.0],
 # INVALID as the `value` argument is not broadcastable to the distribution's
 # shape.
 cum_prob_invalid = u.cdf([4.0, 5.0, 6.0])
+
+### Parameter values leading to undefined statistics or distributions.
+
+Some distributions do not have well-defined statistics for all initialization
+parameter values.  For example, the beta distribution is parameterized by
+positive real numbers `a` and `b`, and does not have well-defined mode if
+`a < 1` or `b < 1`.
+
+The user is given the option of raising an exception or returning `NaN`.
+
+```python
+a = tf.exp(tf.matmul(logits, weights_a))
+b = tf.exp(tf.matmul(logits, weights_b))
+
+# Will raise exception if ANY batch member has a < 1 or b < 1.
+dist = distributions.beta(a, b, allow_nan=False)  # default is False
+mode = dist.mode().eval()
+
+# Will return NaN for batch members with either a < 1 or b < 1.
+dist = distributions.beta(a, b, allow_nan=True)
+mode = dist.mode().eval()
+```
+
+In all cases, an exception is raised if *invalid* parameters are passed, e.g.
+
+```python
+# Will raise an exception if any Op is run.
+negative_a = -1.0 * a  # beta distribution by definition has a > 0.
+dist = distributions.beta(negative_a, b, allow_nan=True)
+dist.mean().eval()
 ```
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.batch_shape(name=None)` {#BaseDistribution.batch_shape}
+#### `tf.contrib.distributions.BaseDistribution.batch_shape(name='batch_shape')` {#BaseDistribution.batch_shape}
 
 Batch dimensions of this instance as a 1-D int32 `Tensor`.
 
@@ -113,14 +143,14 @@ dtype of samples from this distribution.
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.entropy(name=None)` {#BaseDistribution.entropy}
+#### `tf.contrib.distributions.BaseDistribution.entropy(name='entropy')` {#BaseDistribution.entropy}
 
 Entropy of the distribution in nats.
 
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.event_shape(name=None)` {#BaseDistribution.event_shape}
+#### `tf.contrib.distributions.BaseDistribution.event_shape(name='event_shape')` {#BaseDistribution.event_shape}
 
 Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
 
@@ -161,9 +191,16 @@ Log CDF.
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.mean` {#BaseDistribution.mean}
+#### `tf.contrib.distributions.BaseDistribution.mean(name='mean')` {#BaseDistribution.mean}
+
+Mean of the distribution.
 
 
+- - -
+
+#### `tf.contrib.distributions.BaseDistribution.mode(name='mode')` {#BaseDistribution.mode}
+
+Mode of the distribution.
 
 
 - - -
@@ -175,7 +212,7 @@ Name to prepend to all ops.
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.sample(n, seed=None, name=None)` {#BaseDistribution.sample}
+#### `tf.contrib.distributions.BaseDistribution.sample(n, seed=None, name='sample')` {#BaseDistribution.sample}
 
 Generate `n` samples.
 
@@ -191,5 +228,19 @@ Generate `n` samples.
 
 *  <b>`samples`</b>: a `Tensor` of shape `(n,) + self.batch_shape + self.event_shape`
       with values of type `self.dtype`.
+
+
+- - -
+
+#### `tf.contrib.distributions.BaseDistribution.std(name='std')` {#BaseDistribution.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.BaseDistribution.variance(name='variance')` {#BaseDistribution.variance}
+
+Variance of the distribution.
 
 

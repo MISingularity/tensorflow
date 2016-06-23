@@ -69,22 +69,19 @@ def tf_android_core_proto_sources_relative():
         "protobuf/saver.proto",
         "util/memmapped_file_system.proto",
         "util/saved_tensor_slice.proto",
-        "util/test_log.proto",
   ]
 
-# Returns the list of pb.h headers that are generated for
+# Returns the list of pb.h and proto.h headers that are generated for
 # tf_android_core_proto_sources().
 def tf_android_core_proto_headers():
-  return ["//tensorflow/core/" + p.replace(".proto", ".pb.h")
-          for p in tf_android_core_proto_sources_relative()]
+  return (["//tensorflow/core/" + p.replace(".proto", ".pb.h")
+          for p in tf_android_core_proto_sources_relative()] +
+         ["//tensorflow/core/" + p.replace(".proto", ".proto.h")
+          for p in tf_android_core_proto_sources_relative()])
 
 # Returns the list of protos for which proto_text headers should be generated.
-#
-# util/test_log.proto is excluded because it uses google.any, which is not
-# supported well in proto_text.
 def tf_proto_text_protos_relative():
-  return [p for p in tf_android_core_proto_sources_relative()
-          if p not in ("util/test_log.proto")]
+  return [p for p in tf_android_core_proto_sources_relative()]
 
 def if_android_arm(a):
   return select({
@@ -105,8 +102,7 @@ def if_android(a):
   })
 
 def tf_copts():
-  return (["-fno-exceptions", "-DEIGEN_AVOID_STL_ARRAY",
-           "-DTENSORFLOW_USE_EIGEN_THREADPOOL"] +
+  return (["-fno-exceptions", "-DEIGEN_AVOID_STL_ARRAY"] +
           if_cuda(["-DGOOGLE_CUDA=1"]) +
           if_android_arm(["-mfpu=neon"]) +
           select({"//tensorflow:android": [
@@ -693,7 +689,7 @@ def tf_py_test(name, srcs, size="medium", data=[], main=None, args=[],
       data=data,
       deps=[
           "//tensorflow/python:extra_py_tests_deps",
-          "//tensorflow/python:kernel_tests/gradient_checker",
+          "//tensorflow/python:gradient_checker",
       ] + additional_deps,
       srcs_version="PY2AND3")
 

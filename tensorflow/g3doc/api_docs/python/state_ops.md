@@ -1078,7 +1078,7 @@ with tf.variable_scope("foo", reuse=True)
 
 If initializer is `None` (the default), the default initializer passed in
 the variable scope will be used. If that one is `None` too, a
-`UniformUnitScalingInitializer` will be used. The initializer can also be
+`uniform_unit_scaling_initializer` will be used. The initializer can also be
 a Tensor, in which case the variable is initialized to this value and shape.
 
 Similarly, if the regularizer is `None` (the default), the default regularizer
@@ -1086,7 +1086,7 @@ passed in the variable scope will be used (if that is `None` too,
 then by default no regularization is performed).
 
 If a partitioner is provided, first a sharded `Variable` is created
-via `_get_partitioned_variable_list`, and the return value is a
+via `_get_partitioned_variable`, and the return value is a
 `Tensor` composed of the shards concatenated along the partition axis.
 
 Some useful partitioners are available.  See, e.g.,
@@ -1106,8 +1106,6 @@ Some useful partitioners are available.  See, e.g.,
     `GraphKeys.TRAINABLE_VARIABLES` (see tf.Variable).
 *  <b>`collections`</b>: List of graph collections keys to add the Variable to.
     Defaults to `[GraphKeys.VARIABLES]` (see tf.Variable).
-    If partitioning is enabled and used, the concatenated return value
-    is also added to collection `GraphKeys.CONCATENATED_VARIABLES`.
 *  <b>`caching_device`</b>: Optional device string or function describing where the
     Variable should be cached for reading.  Defaults to the Variable's
     device.  If not `None`, caches on another device.  Typical use is to
@@ -1181,6 +1179,13 @@ Gets an existing variable with this name or create a new one.
 - - -
 
 #### `tf.VariableScope.name` {#VariableScope.name}
+
+
+
+
+- - -
+
+#### `tf.VariableScope.original_name_scope` {#VariableScope.original_name_scope}
 
 
 
@@ -1372,7 +1377,6 @@ def my_op_with_vars(a, b, scope=None):
 *  <b>`partitioner`</b>: The default partitioner for variables within this scope.
 *  <b>`reuse`</b>: `True` or `None`; if `True`, we go into reuse mode for this scope as
     well as all sub-scopes; if `None`, we just inherit the parent scope reuse.
-
 
 ##### Returns:
 
@@ -1730,6 +1734,33 @@ One reasonable value for `max_shard_bytes` is `(64 << 20) - 1`, or almost
 *  <b>`ValueError`</b>: If any of the byte counts are non-positive.
 
 
+- - -
+
+### `tf.min_max_variable_partitioner(max_partitions=1, axis=0, min_slice_size=262144, bytes_per_string_element=16)` {#min_max_variable_partitioner}
+
+Partitioner to allocate minimum size per slice.
+
+Returns a partitioner that partitions the variable of given shape and dtype
+such that each partition has a minimum of `min_slice_size` slice of the
+variable. The maximum number of such partitions (upper bound) is given by
+`max_partitions`.
+
+##### Args:
+
+
+*  <b>`max_partitions`</b>: Upper bound on the number of partitions. Defaults to 1.
+*  <b>`axis`</b>: Axis along which to partition the variable. Defaults to 0.
+*  <b>`min_slice_size`</b>: Minimum size of the variable slice per partition. Defaults
+    to 256K.
+*  <b>`bytes_per_string_element`</b>: If the `Variable` is of type string, this provides
+    an estimate of how large each scalar in the `Variable` is.
+
+##### Returns:
+
+  A partition function usable as the `partitioner` argument to
+  `variable_scope`, `get_variable`, and `get_partitioned_variable_list`.
+
+
 
 ## Sparse Variable Updates
 
@@ -1897,8 +1928,8 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 Masks elements of `IndexedSlices`.
 
 Given an `IndexedSlices` instance `a`, returns another `IndexedSlices` that
-contains a subset of the slices of `a`. Only the slices at indices specified
-in `mask_indices` are returned.
+contains a subset of the slices of `a`. Only the slices at indices not
+specified in `mask_indices` are returned.
 
 This is useful when you need to extract a subset of slices in an
 `IndexedSlices` object.
@@ -1912,7 +1943,7 @@ a.indices => [12, 26, 37, 45]
 tf.shape(a.values) => [4, 10]
 
 # `b` will be the subset of `a` slices at its second and third indices, so
-# we want to mask of its first and last indices (which are at absolute
+# we want to mask its first and last indices (which are at absolute
 # indices 12, 45)
 b = tf.sparse_mask(a, [12, 45])
 

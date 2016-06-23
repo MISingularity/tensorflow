@@ -208,18 +208,23 @@ mathematical functions to your graph.
 
 ### `tf.add_n(inputs, name=None)` {#add_n}
 
-Add all input tensors element wise.
+Adds all input tensors element-wise.
 
 ##### Args:
 
 
-*  <b>`inputs`</b>: A list of at least 1 `Tensor` objects of the same type in: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
-    Must all be the same size and shape.
+*  <b>`inputs`</b>: A list of `Tensor` objects, each with same shape and type.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Tensor`. Has the same type as `inputs`.
+  A `Tensor` of same shape and type as the elements of `inputs`.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If `inputs` don't all have same shape and dtype or the shape
+  cannot be inferred.
 
 
 - - -
@@ -239,12 +244,14 @@ number.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor` of type `float`, `double`, `int32`, or `int64`.
+*  <b>`x`</b>: A `Tensor` or `SparseTensor` of type `float`, `double`, `int32`, or
+    `int64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-   A `Tensor` the same size and type as `x` with absolute values.
+  A `Tensor` or `SparseTensor` the same size and type as `x` with absolute
+    values.
 
 
 - - -
@@ -253,17 +260,18 @@ number.
 
 Computes numerical negative value element-wise.
 
-I.e., \\(y = -x\\).
+I.e., \(y = -x\).
 
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`x`</b>: A `Tensor` or `SparseTensor`. Must be one of the following types: `half`,
+    `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Tensor`. Has the same type as `x`.
+  A `Tensor` or `SparseTensor`, respectively. Has the same type as `x`.
 
 
 - - -
@@ -279,12 +287,13 @@ For complex numbers, `y = sign(x) = x / |x|` if `x != 0`, otherwise `y = 0`.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`x`</b>: A `Tensor` or `SparseTensor`. Must be one of the following types: `half`,
+    `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Tensor`. Has the same type as `x`.
+  A `Tensor` or `SparseTensor`, respectively. Has the same type as `x`.
 
 
 - - -
@@ -405,8 +414,10 @@ tf.pow(x, y) ==> [[256, 65536], [9, 27]]
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor` of type `float`, `double`, `int32`, `complex64`, or `int64`.
-*  <b>`y`</b>: A `Tensor` of type `float`, `double`, `int32`, `complex64`, or `int64`.
+*  <b>`x`</b>: A `Tensor` of type `float`, `double`, `int32`, `int64`, `complex64`, or
+   `complex128`.
+*  <b>`y`</b>: A `Tensor` of type `float`, `double`, `int32`, `int64`, `complex64`, or
+   `complex128`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
@@ -586,6 +597,74 @@ bivariate beta function.
 
 
 *  <b>`ValueError`</b>: If `x` is empty with rank one or less.
+
+
+- - -
+
+### `tf.tan(x, name=None)` {#tan}
+
+Computes tan of x element-wise.
+
+##### Args:
+
+
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`name`</b>: A name for the operation (optional).
+
+##### Returns:
+
+  A `Tensor`. Has the same type as `x`.
+
+
+- - -
+
+### `tf.acos(x, name=None)` {#acos}
+
+Computes acos of x element-wise.
+
+##### Args:
+
+
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`name`</b>: A name for the operation (optional).
+
+##### Returns:
+
+  A `Tensor`. Has the same type as `x`.
+
+
+- - -
+
+### `tf.asin(x, name=None)` {#asin}
+
+Computes asin of x element-wise.
+
+##### Args:
+
+
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`name`</b>: A name for the operation (optional).
+
+##### Returns:
+
+  A `Tensor`. Has the same type as `x`.
+
+
+- - -
+
+### `tf.atan(x, name=None)` {#atan}
+
+Computes atan of x element-wise.
+
+##### Args:
+
+
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`name`</b>: A name for the operation (optional).
+
+##### Returns:
+
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
@@ -1910,6 +1989,8 @@ Compute the 1-dimensional discrete Fourier Transform.
 
 ### `tf.ifft(input, name=None)` {#ifft}
 
+.Doc(R"doc(
+
 Compute the inverse 1-dimensional discrete Fourier Transform.
 
 ##### Args:
@@ -2447,7 +2528,7 @@ that `segment_ids[j] == i`.
 ##### Args:
 
 
-*  <b>`data`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`data`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
 *  <b>`segment_ids`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A 1-D tensor whose rank is equal to the rank of `data`'s
     first dimension.  Values should be sorted and can be repeated.
@@ -2481,7 +2562,7 @@ that `segment_ids[j] == i`.
 ##### Args:
 
 
-*  <b>`data`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`data`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
 *  <b>`segment_ids`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A 1-D tensor whose rank is equal to the rank of `data`'s
     first dimension.  Values should be sorted and can be repeated.
@@ -2624,7 +2705,7 @@ If the sum is empty for a given segment ID `i`, `output[i] = 0`.
 ##### Args:
 
 
-*  <b>`data`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`data`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
 *  <b>`segment_ids`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A 1-D tensor whose rank is equal to the rank of `data`'s
     first dimension.

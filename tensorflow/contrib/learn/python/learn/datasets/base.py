@@ -1,4 +1,3 @@
-# pylint: disable=g-bad-file-header
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +51,23 @@ def load_csv(filename, target_dtype, target_column=-1, has_header=True):
       for ir in data_file:
         target.append(ir.pop(target_column))
         data.append(ir)
+      target = np.array(target, dtype=target_dtype)
+      data = np.array(data)
   return Dataset(data=data, target=target)
+
+
+def shrink_csv(filename, ratio):
+  """Create a smaller dataset of only 1/ratio of original data."""
+  filename_small = filename.replace('.', '_small.')
+  with gfile.Open(filename_small, 'w') as csv_file_small:
+    writer = csv.writer(csv_file_small)
+    with gfile.Open(filename) as csv_file:
+      reader = csv.reader(csv_file)
+      i = 0
+      for row in reader:
+        if i % ratio == 0:
+          writer.writerow(row)
+        i += 1
 
 
 def load_iris():

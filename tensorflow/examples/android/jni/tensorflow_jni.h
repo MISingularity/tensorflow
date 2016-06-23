@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,14 +32,14 @@ extern "C" {
 
 JNIEXPORT jint JNICALL TENSORFLOW_METHOD(initializeTensorflow)(
     JNIEnv* env, jobject thiz, jobject java_asset_manager, jstring model,
-    jstring labels, jint num_classes, jint model_input_size, jint image_mean);
+    jstring labels, jint num_classes, jint model_input_size, jint image_mean,
+    jfloat image_std, jstring input_name, jstring output_name);
 
-JNIEXPORT jstring JNICALL
-TENSORFLOW_METHOD(classifyImageBmp)(
-    JNIEnv* env, jobject thiz, jobject bitmap);
+JNIEXPORT jstring JNICALL TENSORFLOW_METHOD(classifyImageBmp)(JNIEnv* env,
+                                                              jobject thiz,
+                                                              jobject bitmap);
 
-JNIEXPORT jstring JNICALL
-TENSORFLOW_METHOD(classifyImageRgb)(
+JNIEXPORT jstring JNICALL TENSORFLOW_METHOD(classifyImageRgb)(
     JNIEnv* env, jobject thiz, jintArray image, jint width, jint height);
 
 #ifdef __cplusplus

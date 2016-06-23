@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,8 +67,8 @@ from tensorflow.python.util.all_util import make_all
 from tensorflow.python.framework.test_util import TensorFlowTestCase as TestCase
 from tensorflow.python.framework.test_util import assert_equal_graph_def
 
-from tensorflow.python.kernel_tests.gradient_checker import compute_gradient_error
-from tensorflow.python.kernel_tests.gradient_checker import compute_gradient
+from tensorflow.python.ops.gradient_checker import compute_gradient_error
+from tensorflow.python.ops.gradient_checker import compute_gradient
 # pylint: enable=unused-import
 
 

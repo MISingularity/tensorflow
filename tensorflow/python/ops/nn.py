@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -131,6 +131,46 @@ to the `Convolution` section for details about the padding calculation.
 @@avg_pool3d
 @@max_pool3d
 
+## Morphological filtering
+
+Morphological operators are non-linear filters used in image processing.
+
+[Greyscale morphological dilation]
+(https://en.wikipedia.org/wiki/Dilation_(morphology)) is the max-sum counterpart
+of standard sum-product convolution:
+
+    output[b, y, x, c] =
+        max_{dy, dx} input[b,
+                           strides[1] * y + rates[1] * dy,
+                           strides[2] * x + rates[2] * dx,
+                           c] +
+                     filter[dy, dx, c]
+
+The `filter` is usually called structuring function. Max-pooling is a special
+case of greyscale morphological dilation when the filter assumes all-zero
+values (a.k.a. flat structuring function).
+
+[Greyscale morphological erosion]
+(https://en.wikipedia.org/wiki/Erosion_(morphology)) is the min-sum counterpart
+of standard sum-product convolution:
+
+    output[b, y, x, c] =
+        min_{dy, dx} input[b,
+                           strides[1] * y - rates[1] * dy,
+                           strides[2] * x - rates[2] * dx,
+                           c] -
+                     filter[dy, dx, c]
+
+Dilation and erosion are dual to each other. The dilation of the input signal
+`f` by the structuring signal `g` is equal to the negation of the erosion of
+`-f` by the reflected `g`, and vice versa.
+
+Striding and padding is carried out in exactly the same way as in standard
+convolution. Please refer to the `Convolution` section for details.
+
+@@dilation2d
+@@erosion2d
+
 ## Normalization
 
 Normalization is useful to prevent neurons from saturating when inputs may
@@ -168,6 +208,23 @@ tensors.
 
 @@embedding_lookup
 @@embedding_lookup_sparse
+
+## Recurrent Neural Networks
+
+TensorFlow provides a number of methods for constructing Recurrent
+Neural Networks.  Most accept an `RNNCell`-subclassed object
+(see the documentation for `tf.nn.rnn_cell`).
+
+@@dynamic_rnn
+@@rnn
+@@state_saving_rnn
+@@bidirectional_rnn
+
+## Conectionist Temporal Classification (CTC)
+
+@@ctc_loss
+@@ctc_greedy_decoder
+@@ctc_beam_search_decoder
 
 ## Evaluation
 
@@ -218,12 +275,12 @@ from __future__ import print_function
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
+from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import candidate_sampling_ops
-from tensorflow.python.ops import constant_op
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import init_ops
@@ -243,6 +300,7 @@ from tensorflow.python.util.all_util import make_all
 # Bring more nn-associated functionality into this package.
 # go/tf-wildcard-import
 # pylint: disable=wildcard-import
+from tensorflow.python.ops.ctc_ops import *
 from tensorflow.python.ops.nn_ops import *
 from tensorflow.python.ops.candidate_sampling_ops import *
 from tensorflow.python.ops.embedding_ops import *
@@ -719,7 +777,8 @@ def moments(x, axes, shift=None, name=None, keep_dims=False):
                                                       shift=shift,
                                                       keep_dims=keep_dims,
                                                       name=name)
-    return normalize_moments(counts, m_ss, v_ss, shift, name=name)
+    with ops.control_dependencies([counts, m_ss, v_ss]):
+      return normalize_moments(counts, m_ss, v_ss, shift, name=name)
 
 
 def batch_normalization(x,
@@ -1135,14 +1194,10 @@ __all__.extend([
     "all_candidate_sampler",
     "batch_norm_with_global_normalization",
     "batch_normalization",
-    "bidirectional_rnn",
     "conv2d_backprop_filter",
     "conv2d_backprop_input",
     "depthwise_conv2d_native",
-    "dynamic_rnn",
     "lrn",
     "relu_layer",
-    "rnn",
-    "state_saving_rnn",
     "xw_plus_b",
 ])

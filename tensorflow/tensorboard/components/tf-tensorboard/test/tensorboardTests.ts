@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the 'License');
 you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ describe('tf-tensorboard tests', () => {
       setTimeout(function() {
         let tabs = tensorboard.$.tabs.getElementsByTagName('paper-tab');
         let tabMode = Array.prototype.map.call(tabs, (x) => x.dataMode);
-        assert.deepEqual(tabMode, TF.TensorBoard.TABS, 'mode is correct');
+        assert.deepEqual(tabMode, TF.Globals.TABS, 'mode is correct');
         let tabText =
             Array.prototype.map.call(tabs, (x) => x.innerText.toLowerCase());
-        assert.deepEqual(tabText, TF.TensorBoard.TABS, 'text is correct');
+        assert.deepEqual(tabText, TF.Globals.TABS, 'text is correct');
         done();
       });
     });
@@ -41,7 +41,7 @@ describe('tf-tensorboard tests', () => {
     });
 
     describe('non-graph tabs: reloading the selected dashboard', function() {
-      TF.TensorBoard.TABS.forEach((name, tabIndex) => {
+      TF.Globals.TABS.forEach((name, tabIndex) => {
         if (name === 'graphs') {
           return;
         }
@@ -64,7 +64,7 @@ describe('tf-tensorboard tests', () => {
     });
 
     it('reload is disabled for graph dashboard', function(done) {
-      let idx = TF.TensorBoard.TABS.indexOf('graphs');
+      let idx = TF.Globals.TABS.indexOf('graphs');
       assert.notEqual(idx, -1, 'graphs was found');
       tensorboard.$.tabs.set('selected', idx);
       setTimeout(

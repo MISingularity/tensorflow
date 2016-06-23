@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -526,8 +526,7 @@ glimpse_width, channels]`. The channels and batch dimensions are the
 same as that of the input tensor. The height and width of the output
 windows are specified in the `size` parameter.
 
-The argument `normalized` and `centered` controls how the windows are
-built:
+The argument `normalized` and `centered` controls how the windows are built:
 
 * If the coordinates are normalized but not centered, 0.0 and 1.0
   correspond to the minimum and maximum of each height and width

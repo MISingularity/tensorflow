@@ -1,4 +1,3 @@
-# pylint: disable=g-bad-file-header
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +25,8 @@ from tensorflow.contrib.learn.python.learn.io.dask_io import HAS_DASK
 from tensorflow.contrib.learn.python.learn.io.graph_io import read_batch_examples
 from tensorflow.contrib.learn.python.learn.io.graph_io import read_batch_features
 from tensorflow.contrib.learn.python.learn.io.graph_io import read_batch_record_features
+from tensorflow.contrib.learn.python.learn.io.graph_io import read_keyed_batch_examples
+from tensorflow.contrib.learn.python.learn.io.graph_io import read_keyed_batch_features
 from tensorflow.contrib.learn.python.learn.io.pandas_io import extract_pandas_data
 from tensorflow.contrib.learn.python.learn.io.pandas_io import extract_pandas_labels
 from tensorflow.contrib.learn.python.learn.io.pandas_io import extract_pandas_matrix

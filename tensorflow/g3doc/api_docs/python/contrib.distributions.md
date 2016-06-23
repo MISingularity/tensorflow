@@ -72,7 +72,7 @@ u = Uniform(minval, maxval)
 
 # `event_shape` is `TensorShape([])`.
 event_shape = u.get_event_shape()
-# `event_shape_t` is a `Tensor` which will evaluate to a scalar 1.
+# `event_shape_t` is a `Tensor` which will evaluate to [].
 event_shape_t = u.event_shape
 
 # Sampling returns a sample per distribution.  `samples` has shape
@@ -95,10 +95,40 @@ cum_prob_per_dist = u.cdf([[4.0, 5.0],
 # INVALID as the `value` argument is not broadcastable to the distribution's
 # shape.
 cum_prob_invalid = u.cdf([4.0, 5.0, 6.0])
+
+### Parameter values leading to undefined statistics or distributions.
+
+Some distributions do not have well-defined statistics for all initialization
+parameter values.  For example, the beta distribution is parameterized by
+positive real numbers `a` and `b`, and does not have well-defined mode if
+`a < 1` or `b < 1`.
+
+The user is given the option of raising an exception or returning `NaN`.
+
+```python
+a = tf.exp(tf.matmul(logits, weights_a))
+b = tf.exp(tf.matmul(logits, weights_b))
+
+# Will raise exception if ANY batch member has a < 1 or b < 1.
+dist = distributions.beta(a, b, allow_nan=False)  # default is False
+mode = dist.mode().eval()
+
+# Will return NaN for batch members with either a < 1 or b < 1.
+dist = distributions.beta(a, b, allow_nan=True)
+mode = dist.mode().eval()
+```
+
+In all cases, an exception is raised if *invalid* parameters are passed, e.g.
+
+```python
+# Will raise an exception if any Op is run.
+negative_a = -1.0 * a  # beta distribution by definition has a > 0.
+dist = distributions.beta(negative_a, b, allow_nan=True)
+dist.mean().eval()
 ```
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.batch_shape(name=None)` {#BaseDistribution.batch_shape}
+#### `tf.contrib.distributions.BaseDistribution.batch_shape(name='batch_shape')` {#BaseDistribution.batch_shape}
 
 Batch dimensions of this instance as a 1-D int32 `Tensor`.
 
@@ -131,14 +161,14 @@ dtype of samples from this distribution.
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.entropy(name=None)` {#BaseDistribution.entropy}
+#### `tf.contrib.distributions.BaseDistribution.entropy(name='entropy')` {#BaseDistribution.entropy}
 
 Entropy of the distribution in nats.
 
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.event_shape(name=None)` {#BaseDistribution.event_shape}
+#### `tf.contrib.distributions.BaseDistribution.event_shape(name='event_shape')` {#BaseDistribution.event_shape}
 
 Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
 
@@ -179,9 +209,16 @@ Log CDF.
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.mean` {#BaseDistribution.mean}
+#### `tf.contrib.distributions.BaseDistribution.mean(name='mean')` {#BaseDistribution.mean}
+
+Mean of the distribution.
 
 
+- - -
+
+#### `tf.contrib.distributions.BaseDistribution.mode(name='mode')` {#BaseDistribution.mode}
+
+Mode of the distribution.
 
 
 - - -
@@ -193,7 +230,7 @@ Name to prepend to all ops.
 
 - - -
 
-#### `tf.contrib.distributions.BaseDistribution.sample(n, seed=None, name=None)` {#BaseDistribution.sample}
+#### `tf.contrib.distributions.BaseDistribution.sample(n, seed=None, name='sample')` {#BaseDistribution.sample}
 
 Generate `n` samples.
 
@@ -209,6 +246,20 @@ Generate `n` samples.
 
 *  <b>`samples`</b>: a `Tensor` of shape `(n,) + self.batch_shape + self.event_shape`
       with values of type `self.dtype`.
+
+
+- - -
+
+#### `tf.contrib.distributions.BaseDistribution.std(name='std')` {#BaseDistribution.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.BaseDistribution.variance(name='variance')` {#BaseDistribution.variance}
+
+Variance of the distribution.
 
 
 
@@ -235,7 +286,7 @@ See `BaseDistribution` for more information on the API for probability
 distributions.
 - - -
 
-#### `tf.contrib.distributions.ContinuousDistribution.batch_shape(name=None)` {#ContinuousDistribution.batch_shape}
+#### `tf.contrib.distributions.ContinuousDistribution.batch_shape(name='batch_shape')` {#ContinuousDistribution.batch_shape}
 
 Batch dimensions of this instance as a 1-D int32 `Tensor`.
 
@@ -268,14 +319,14 @@ dtype of samples from this distribution.
 
 - - -
 
-#### `tf.contrib.distributions.ContinuousDistribution.entropy(name=None)` {#ContinuousDistribution.entropy}
+#### `tf.contrib.distributions.ContinuousDistribution.entropy(name='entropy')` {#ContinuousDistribution.entropy}
 
 Entropy of the distribution in nats.
 
 
 - - -
 
-#### `tf.contrib.distributions.ContinuousDistribution.event_shape(name=None)` {#ContinuousDistribution.event_shape}
+#### `tf.contrib.distributions.ContinuousDistribution.event_shape(name='event_shape')` {#ContinuousDistribution.event_shape}
 
 Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
 
@@ -323,6 +374,13 @@ Log CDF.
 
 - - -
 
+#### `tf.contrib.distributions.ContinuousDistribution.log_likelihood(value, name='log_likelihood')` {#ContinuousDistribution.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.ContinuousDistribution.log_pdf(value, name='log_pdf')` {#ContinuousDistribution.log_pdf}
 
 Log of the probability density function.
@@ -330,9 +388,16 @@ Log of the probability density function.
 
 - - -
 
-#### `tf.contrib.distributions.ContinuousDistribution.mean` {#ContinuousDistribution.mean}
+#### `tf.contrib.distributions.ContinuousDistribution.mean(name='mean')` {#ContinuousDistribution.mean}
+
+Mean of the distribution.
 
 
+- - -
+
+#### `tf.contrib.distributions.ContinuousDistribution.mode(name='mode')` {#ContinuousDistribution.mode}
+
+Mode of the distribution.
 
 
 - - -
@@ -351,7 +416,7 @@ Probability density function.
 
 - - -
 
-#### `tf.contrib.distributions.ContinuousDistribution.sample(n, seed=None, name=None)` {#ContinuousDistribution.sample}
+#### `tf.contrib.distributions.ContinuousDistribution.sample(n, seed=None, name='sample')` {#ContinuousDistribution.sample}
 
 Generate `n` samples.
 
@@ -367,6 +432,20 @@ Generate `n` samples.
 
 *  <b>`samples`</b>: a `Tensor` of shape `(n,) + self.batch_shape + self.event_shape`
       with values of type `self.dtype`.
+
+
+- - -
+
+#### `tf.contrib.distributions.ContinuousDistribution.std(name='std')` {#ContinuousDistribution.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.ContinuousDistribution.variance(name='variance')` {#ContinuousDistribution.variance}
+
+Variance of the distribution.
 
 
 
@@ -386,7 +465,7 @@ See `BaseDistribution` for more information on the API for probability
 distributions.
 - - -
 
-#### `tf.contrib.distributions.DiscreteDistribution.batch_shape(name=None)` {#DiscreteDistribution.batch_shape}
+#### `tf.contrib.distributions.DiscreteDistribution.batch_shape(name='batch_shape')` {#DiscreteDistribution.batch_shape}
 
 Batch dimensions of this instance as a 1-D int32 `Tensor`.
 
@@ -419,14 +498,14 @@ dtype of samples from this distribution.
 
 - - -
 
-#### `tf.contrib.distributions.DiscreteDistribution.entropy(name=None)` {#DiscreteDistribution.entropy}
+#### `tf.contrib.distributions.DiscreteDistribution.entropy(name='entropy')` {#DiscreteDistribution.entropy}
 
 Entropy of the distribution in nats.
 
 
 - - -
 
-#### `tf.contrib.distributions.DiscreteDistribution.event_shape(name=None)` {#DiscreteDistribution.event_shape}
+#### `tf.contrib.distributions.DiscreteDistribution.event_shape(name='event_shape')` {#DiscreteDistribution.event_shape}
 
 Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
 
@@ -467,6 +546,13 @@ Log CDF.
 
 - - -
 
+#### `tf.contrib.distributions.DiscreteDistribution.log_likelihood(value, name='log_likelihood')` {#DiscreteDistribution.log_likelihood}
+
+Log likelihood of this distribution (same as log_pmf).
+
+
+- - -
+
 #### `tf.contrib.distributions.DiscreteDistribution.log_pmf(value, name='log_pmf')` {#DiscreteDistribution.log_pmf}
 
 Log of the probability mass function.
@@ -474,9 +560,16 @@ Log of the probability mass function.
 
 - - -
 
-#### `tf.contrib.distributions.DiscreteDistribution.mean` {#DiscreteDistribution.mean}
+#### `tf.contrib.distributions.DiscreteDistribution.mean(name='mean')` {#DiscreteDistribution.mean}
+
+Mean of the distribution.
 
 
+- - -
+
+#### `tf.contrib.distributions.DiscreteDistribution.mode(name='mode')` {#DiscreteDistribution.mode}
+
+Mode of the distribution.
 
 
 - - -
@@ -495,7 +588,7 @@ Probability mass function.
 
 - - -
 
-#### `tf.contrib.distributions.DiscreteDistribution.sample(n, seed=None, name=None)` {#DiscreteDistribution.sample}
+#### `tf.contrib.distributions.DiscreteDistribution.sample(n, seed=None, name='sample')` {#DiscreteDistribution.sample}
 
 Generate `n` samples.
 
@@ -513,9 +606,225 @@ Generate `n` samples.
       with values of type `self.dtype`.
 
 
+- - -
+
+#### `tf.contrib.distributions.DiscreteDistribution.std(name='std')` {#DiscreteDistribution.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.DiscreteDistribution.variance(name='variance')` {#DiscreteDistribution.variance}
+
+Variance of the distribution.
+
+
 
 
 ### Univariate (scalar) distributions
+
+- - -
+
+### `class tf.contrib.distributions.Categorical` {#Categorical}
+
+Categorical distribution.
+
+The categorical distribution is parameterized by the log-probabilities
+of a set of classes.
+
+Note, the following methods of the base class aren't implemented:
+  * mean
+  * cdf
+  * log_cdf
+- - -
+
+#### `tf.contrib.distributions.Categorical.__init__(logits, name='Categorical', dtype=tf.int32)` {#Categorical.__init__}
+
+Initialize Categorical distributions using class log-probabilities.
+
+##### Args:
+
+
+*  <b>`logits`</b>: An N-D `Tensor` representing the log probabilities of a set of
+      Categorical distributions. The first N - 1 dimensions index into a
+      batch of independent distributions and the last dimension indexes
+      into the classes.
+*  <b>`name`</b>: A name for this distribution (optional).
+*  <b>`dtype`</b>: The type of the event samples (default: int32).
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.batch_shape(name='batch_shape')` {#Categorical.batch_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.cdf(value, name='cdf')` {#Categorical.cdf}
+
+Cumulative distribution function.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.dtype` {#Categorical.dtype}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.entropy(name='sample')` {#Categorical.entropy}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.event_shape(name='event_shape')` {#Categorical.event_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.get_batch_shape()` {#Categorical.get_batch_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.get_event_shape()` {#Categorical.get_event_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.is_reparameterized` {#Categorical.is_reparameterized}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.log_cdf(value, name='log_cdf')` {#Categorical.log_cdf}
+
+Log CDF.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.log_likelihood(value, name='log_likelihood')` {#Categorical.log_likelihood}
+
+Log likelihood of this distribution (same as log_pmf).
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.log_pmf(k, name='log_pmf')` {#Categorical.log_pmf}
+
+Log-probability of class `k`.
+
+##### Args:
+
+
+*  <b>`k`</b>: `int32` or `int64` Tensor with shape = `self.batch_shape()`.
+*  <b>`name`</b>: A name for this operation (optional).
+
+##### Returns:
+
+  The log-probabilities of the classes indexed by `k`
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.logits` {#Categorical.logits}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.mean(name='mean')` {#Categorical.mean}
+
+Mean of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.mode(name='mode')` {#Categorical.mode}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.name` {#Categorical.name}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.num_classes` {#Categorical.num_classes}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.pmf(k, name='pmf')` {#Categorical.pmf}
+
+Probability of class `k`.
+
+##### Args:
+
+
+*  <b>`k`</b>: `int32` or `int64` Tensor with shape = `self.batch_shape()`.
+*  <b>`name`</b>: A name for this operation (optional).
+
+##### Returns:
+
+  The probabilities of the classes indexed by `k`
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.sample(n, seed=None, name='sample')` {#Categorical.sample}
+
+Sample `n` observations from the Categorical distribution.
+
+##### Args:
+
+
+*  <b>`n`</b>: 0-D.  Number of independent samples to draw for each distribution.
+*  <b>`seed`</b>: Random seed (optional).
+*  <b>`name`</b>: A name for this operation (optional).
+
+##### Returns:
+
+  An `int64` `Tensor` with shape `[n, batch_shape, event_shape]`
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.std(name='std')` {#Categorical.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.variance(name='variance')` {#Categorical.variance}
+
+Variance of the distribution.
+
+
 
 - - -
 
@@ -696,6 +1005,13 @@ Log CDF of observations `x` under these Gamma distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Chi2.log_likelihood(value, name='log_likelihood')` {#Chi2.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.Chi2.log_pdf(x, name='log_pdf')` {#Chi2.log_pdf}
 
 Log pdf of observations in `x` under these Gamma distribution(s).
@@ -719,9 +1035,16 @@ Log pdf of observations in `x` under these Gamma distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Chi2.mean` {#Chi2.mean}
+#### `tf.contrib.distributions.Chi2.mean(name='mean')` {#Chi2.mean}
 
 Mean of each batch member.
+
+
+- - -
+
+#### `tf.contrib.distributions.Chi2.mode(name='mode')` {#Chi2.mode}
+
+Mode of each batch member.  Defined only if alpha >= 1.
 
 
 - - -
@@ -756,16 +1079,19 @@ Pdf of observations in `x` under these Gamma distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Chi2.sample(n, seed=None, name=None)` {#Chi2.sample}
+#### `tf.contrib.distributions.Chi2.sample(n, seed=None, name='sample')` {#Chi2.sample}
 
-Generate `n` samples.
+Draws `n` samples from the Gamma distribution(s).
+
+See the doc for tf.random_gamma for further detail.
 
 ##### Args:
 
 
-*  <b>`n`</b>: scalar. Number of samples to draw from each distribution.
-*  <b>`seed`</b>: Python integer seed for RNG
-*  <b>`name`</b>: name to give to the op.
+*  <b>`n`</b>: Python integer, the number of observations to sample from each
+    distribution.
+*  <b>`seed`</b>: Python integer, the random seed for this operation.
+*  <b>`name`</b>: Optional name for the operation.
 
 ##### Returns:
 
@@ -776,7 +1102,14 @@ Generate `n` samples.
 
 - - -
 
-#### `tf.contrib.distributions.Chi2.variance` {#Chi2.variance}
+#### `tf.contrib.distributions.Chi2.std(name='std')` {#Chi2.std}
+
+Standard deviation of this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Chi2.variance(name='variance')` {#Chi2.variance}
 
 Variance of each batch member.
 
@@ -961,6 +1294,13 @@ Log CDF of observations `x` under these Gamma distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Exponential.log_likelihood(value, name='log_likelihood')` {#Exponential.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.Exponential.log_pdf(x, name='log_pdf')` {#Exponential.log_pdf}
 
 Log pdf of observations in `x` under these Gamma distribution(s).
@@ -984,9 +1324,16 @@ Log pdf of observations in `x` under these Gamma distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Exponential.mean` {#Exponential.mean}
+#### `tf.contrib.distributions.Exponential.mean(name='mean')` {#Exponential.mean}
 
 Mean of each batch member.
+
+
+- - -
+
+#### `tf.contrib.distributions.Exponential.mode(name='mode')` {#Exponential.mode}
+
+Mode of each batch member.  Defined only if alpha >= 1.
 
 
 - - -
@@ -1041,7 +1388,14 @@ Sample `n` observations from the Exponential Distributions.
 
 - - -
 
-#### `tf.contrib.distributions.Exponential.variance` {#Exponential.variance}
+#### `tf.contrib.distributions.Exponential.std(name='std')` {#Exponential.std}
+
+Standard deviation of this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Exponential.variance(name='variance')` {#Exponential.variance}
 
 Variance of each batch member.
 
@@ -1250,6 +1604,13 @@ Log CDF of observations `x` under these Gamma distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Gamma.log_likelihood(value, name='log_likelihood')` {#Gamma.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.Gamma.log_pdf(x, name='log_pdf')` {#Gamma.log_pdf}
 
 Log pdf of observations in `x` under these Gamma distribution(s).
@@ -1273,9 +1634,16 @@ Log pdf of observations in `x` under these Gamma distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Gamma.mean` {#Gamma.mean}
+#### `tf.contrib.distributions.Gamma.mean(name='mean')` {#Gamma.mean}
 
 Mean of each batch member.
+
+
+- - -
+
+#### `tf.contrib.distributions.Gamma.mode(name='mode')` {#Gamma.mode}
+
+Mode of each batch member.  Defined only if alpha >= 1.
 
 
 - - -
@@ -1310,16 +1678,19 @@ Pdf of observations in `x` under these Gamma distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Gamma.sample(n, seed=None, name=None)` {#Gamma.sample}
+#### `tf.contrib.distributions.Gamma.sample(n, seed=None, name='sample')` {#Gamma.sample}
 
-Generate `n` samples.
+Draws `n` samples from the Gamma distribution(s).
+
+See the doc for tf.random_gamma for further detail.
 
 ##### Args:
 
 
-*  <b>`n`</b>: scalar. Number of samples to draw from each distribution.
-*  <b>`seed`</b>: Python integer seed for RNG
-*  <b>`name`</b>: name to give to the op.
+*  <b>`n`</b>: Python integer, the number of observations to sample from each
+    distribution.
+*  <b>`seed`</b>: Python integer, the random seed for this operation.
+*  <b>`name`</b>: Optional name for the operation.
 
 ##### Returns:
 
@@ -1330,7 +1701,14 @@ Generate `n` samples.
 
 - - -
 
-#### `tf.contrib.distributions.Gamma.variance` {#Gamma.variance}
+#### `tf.contrib.distributions.Gamma.std(name='std')` {#Gamma.std}
+
+Standard deviation of this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Gamma.variance(name='variance')` {#Gamma.variance}
 
 Variance of each batch member.
 
@@ -1384,7 +1762,7 @@ dist.pdf(3.0)
 ```
 - - -
 
-#### `tf.contrib.distributions.Normal.__init__(mu, sigma, name=None)` {#Normal.__init__}
+#### `tf.contrib.distributions.Normal.__init__(mu, sigma, name='Normal')` {#Normal.__init__}
 
 Construct Normal distributions with mean and stddev `mu` and `sigma`.
 
@@ -1407,7 +1785,26 @@ broadcasting (e.g. `mu + sigma` is a valid operation).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.cdf(x, name=None)` {#Normal.cdf}
+#### `tf.contrib.distributions.Normal.batch_shape(name='batch_shape')` {#Normal.batch_shape}
+
+Batch dimensions of this instance as a 1-D int32 `Tensor`.
+
+The product of the dimensions of the `batch_shape` is the number of
+independent distributions of this kind the instance represents.
+
+##### Args:
+
+
+*  <b>`name`</b>: name to give to the op.
+
+##### Returns:
+
+  `Tensor` `batch_shape`
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.cdf(x, name='cdf')` {#Normal.cdf}
 
 CDF of observations in `x` under these Normal distribution(s).
 
@@ -1432,7 +1829,7 @@ CDF of observations in `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.entropy(name=None)` {#Normal.entropy}
+#### `tf.contrib.distributions.Normal.entropy(name='entropy')` {#Normal.entropy}
 
 The entropy of Normal distribution(s).
 
@@ -1449,6 +1846,48 @@ The entropy of Normal distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Normal.event_shape(name='event_shape')` {#Normal.event_shape}
+
+Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
+
+##### Args:
+
+
+*  <b>`name`</b>: name to give to the op.
+
+##### Returns:
+
+  `Tensor` `event_shape`
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.get_batch_shape()` {#Normal.get_batch_shape}
+
+`TensorShape` available at graph construction time.
+
+Same meaning as `batch_shape`. May be only partially defined.
+
+##### Returns:
+
+  batch shape
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.get_event_shape()` {#Normal.get_event_shape}
+
+`TensorShape` available at graph construction time.
+
+Same meaning as `event_shape`. May be only partially defined.
+
+##### Returns:
+
+  event shape
+
+
+- - -
+
 #### `tf.contrib.distributions.Normal.is_reparameterized` {#Normal.is_reparameterized}
 
 
@@ -1456,7 +1895,7 @@ The entropy of Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.log_cdf(x, name=None)` {#Normal.log_cdf}
+#### `tf.contrib.distributions.Normal.log_cdf(x, name='log_cdf')` {#Normal.log_cdf}
 
 Log CDF of observations `x` under these Normal distribution(s).
 
@@ -1474,7 +1913,14 @@ Log CDF of observations `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.log_pdf(x, name=None)` {#Normal.log_pdf}
+#### `tf.contrib.distributions.Normal.log_likelihood(value, name='log_likelihood')` {#Normal.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.log_pdf(x, name='log_pdf')` {#Normal.log_pdf}
 
 Log pdf of observations in `x` under these Normal distribution(s).
 
@@ -1492,21 +1938,35 @@ Log pdf of observations in `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.mean` {#Normal.mean}
+#### `tf.contrib.distributions.Normal.mean(name='mean')` {#Normal.mean}
+
+Mean of this distribution.
 
 
+- - -
+
+#### `tf.contrib.distributions.Normal.mode(name='mode')` {#Normal.mode}
+
+Mode of this distribution.
 
 
 - - -
 
 #### `tf.contrib.distributions.Normal.mu` {#Normal.mu}
 
+Distribution parameter for the mean.
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.name` {#Normal.name}
+
 
 
 
 - - -
 
-#### `tf.contrib.distributions.Normal.pdf(x, name=None)` {#Normal.pdf}
+#### `tf.contrib.distributions.Normal.pdf(x, name='pdf')` {#Normal.pdf}
 
 The PDF of observations in `x` under these Normal distribution(s).
 
@@ -1524,7 +1984,7 @@ The PDF of observations in `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.sample(n, seed=None, name=None)` {#Normal.sample}
+#### `tf.contrib.distributions.Normal.sample(n, seed=None, name='sample')` {#Normal.sample}
 
 Sample `n` observations from the Normal Distributions.
 
@@ -1546,7 +2006,21 @@ Sample `n` observations from the Normal Distributions.
 
 #### `tf.contrib.distributions.Normal.sigma` {#Normal.sigma}
 
+Distribution parameter for standard deviation.
 
+
+- - -
+
+#### `tf.contrib.distributions.Normal.std(name='std')` {#Normal.std}
+
+Standard deviation of this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.variance(name='variance')` {#Normal.variance}
+
+Variance of this distribution.
 
 
 
@@ -1709,6 +2183,13 @@ Log CDF.
 
 - - -
 
+#### `tf.contrib.distributions.StudentT.log_likelihood(value, name='log_likelihood')` {#StudentT.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.StudentT.log_pdf(x, name='log_pdf')` {#StudentT.log_pdf}
 
 Log pdf of observations in `x` under these Student's t-distribution(s).
@@ -1727,7 +2208,14 @@ Log pdf of observations in `x` under these Student's t-distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.StudentT.mean` {#StudentT.mean}
+#### `tf.contrib.distributions.StudentT.mean(name='mean')` {#StudentT.mean}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.StudentT.mode(name='mode')` {#StudentT.mode}
 
 
 
@@ -1794,7 +2282,14 @@ Scaling factors of these Student's t distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.StudentT.variance` {#StudentT.variance}
+#### `tf.contrib.distributions.StudentT.std(name='std')` {#StudentT.std}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.StudentT.variance(name='variance')` {#StudentT.variance}
 
 
 
@@ -1948,6 +2443,13 @@ The entropy of Uniform distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Uniform.log_likelihood(value, name='log_likelihood')` {#Uniform.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.Uniform.log_pdf(x, name='log_pdf')` {#Uniform.log_pdf}
 
 
@@ -1955,9 +2457,16 @@ The entropy of Uniform distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Uniform.mean` {#Uniform.mean}
+#### `tf.contrib.distributions.Uniform.mean(name='mean')` {#Uniform.mean}
 
 
+
+
+- - -
+
+#### `tf.contrib.distributions.Uniform.mode(name='mode')` {#Uniform.mode}
+
+Mode of the distribution.
 
 
 - - -
@@ -1988,7 +2497,7 @@ The PDF of observations in `x` under these Uniform distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Uniform.range` {#Uniform.range}
+#### `tf.contrib.distributions.Uniform.range(name='range')` {#Uniform.range}
 
 `b - a`.
 
@@ -2015,7 +2524,14 @@ Sample `n` observations from the Uniform Distributions.
 
 - - -
 
-#### `tf.contrib.distributions.Uniform.variance` {#Uniform.variance}
+#### `tf.contrib.distributions.Uniform.std(name='std')` {#Uniform.std}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Uniform.variance(name='variance')` {#Uniform.variance}
 
 
 
@@ -2254,7 +2770,7 @@ Sample `n` observations from the Multivariate Normal Distributions.
 DirichletMultinomial mixture distribution.
 
 This distribution is parameterized by a vector `alpha` of concentration
-parameters for `k` classes.
+parameters for `k` classes and `n`, the counts per each class..
 
 #### Mathematical details
 
@@ -2264,21 +2780,21 @@ probability of these draws being made from the distribution.  The distribution
 has hyperparameters `alpha = (alpha_1,...,alpha_k)`, and probability mass
 function (pmf):
 
-```pmf(counts) = C! / (c_1!...c_k!) * Beta(alpha + c) / Beta(alpha)```
+```pmf(counts) = N! / (n_1!...n_k!) * Beta(alpha + c) / Beta(alpha)```
 
-where above `C = sum_j c_j`, `N!` is `N` factorial, and
+where above `N = sum_j n_j`, `N!` is `N` factorial, and
 `Beta(x) = prod_j Gamma(x_j) / Gamma(sum_j x_j)` is the multivariate beta
 function.
 
-This is a mixture distribution in that `N` samples can be produced by:
+This is a mixture distribution in that `M` samples can be produced by:
   1. Choose class probabilities `p = (p_1,...,p_k) ~ Dir(alpha)`
-  2. Draw integers `m = (m_1,...,m_k) ~ Multinomial(p, N)`
+  2. Draw integers `m = (n_1,...,n_k) ~ Multinomial(N, p)`
 
 This class provides methods to create indexed batches of Dirichlet
 Multinomial distributions.  If the provided `alpha` is rank 2 or higher, for
 every fixed set of leading dimensions, the last dimension represents one
 single Dirichlet Multinomial distribution.  When calling distribution
-functions (e.g. `dist.pdf(counts)`), `alpha` and `counts` are broadcast to the
+functions (e.g. `dist.pmf(counts)`), `alpha` and `counts` are broadcast to the
 same shape (if possible).  In all cases, the last dimension of alpha/counts
 represents single Dirichlet Multinomial distributions.
 
@@ -2286,7 +2802,8 @@ represents single Dirichlet Multinomial distributions.
 
 ```python
 alpha = [1, 2, 3]
-dist = DirichletMultinomial(alpha)
+n = 2
+dist = DirichletMultinomial(n, alpha)
 ```
 
 Creates a 3-class distribution, with the 3rd class is most likely to be drawn.
@@ -2294,40 +2811,50 @@ The distribution functions can be evaluated on counts.
 
 ```python
 # counts same shape as alpha.
-counts = [0, 2, 0]
-dist.pdf(counts)  # Shape []
+counts = [0, 0, 2]
+dist.pmf(counts)  # Shape []
 
 # alpha will be broadcast to [[1, 2, 3], [1, 2, 3]] to match counts.
-counts = [[11, 22, 33], [44, 55, 66]]
-dist.pdf(counts)  # Shape [2]
+counts = [[1, 1, 0], [1, 0, 1]]
+dist.pmf(counts)  # Shape [2]
 
 # alpha will be broadcast to shape [5, 7, 3] to match counts.
 counts = [[...]]  # Shape [5, 7, 3]
-dist.pdf(counts)  # Shape [5, 7]
+dist.pmf(counts)  # Shape [5, 7]
 ```
 
 Creates a 2-batch of 3-class distributions.
 
 ```python
 alpha = [[1, 2, 3], [4, 5, 6]]  # Shape [2, 3]
-dist = DirichletMultinomial(alpha)
+n = [3, 3]
+dist = DirichletMultinomial(n, alpha)
 
-# counts will be broadcast to [[11, 22, 33], [11, 22, 33]] to match alpha.
-counts = [11, 22, 33]
-dist.pdf(counts)  # Shape [2]
+# counts will be broadcast to [[2, 1, 0], [2, 1, 0]] to match alpha.
+counts = [2, 1, 0]
+dist.pmf(counts)  # Shape [2]
 ```
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.__init__(alpha)` {#DirichletMultinomial.__init__}
+#### `tf.contrib.distributions.DirichletMultinomial.__init__(n, alpha, name='DirichletMultinomial', allow_arbitrary_counts=False)` {#DirichletMultinomial.__init__}
 
 Initialize a batch of DirichletMultinomial distributions.
 
 ##### Args:
 
 
-*  <b>`alpha`</b>: Shape `[N1,..., Nn, k]` positive `float` or `double` tensor with
-    `n >= 0`.  Defines this as a batch of `N1 x ... x Nn` different `k`
-    class Dirichlet multinomial distributions.
+*  <b>`n`</b>: Non-negative `float` or `double` tensor with shape
+    broadcastable to `[N1,..., Nm]` with `m >= 0`.  Defines this as a batch
+    of `N1 x ... x Nm` different Dirichlet multinomial distributions. Its
+    components should be equal to integral values.
+*  <b>`alpha`</b>: Positive `float` or `double` tensor with shape broadcastable to
+    `[N1,..., Nm, k]` `m >= 0`.  Defines this as a batch of `N1 x ... x Nm`
+     different `k` class Dirichlet multinomial distributions.
+*  <b>`name`</b>: The name to prefix Ops created by this distribution class.
+*  <b>`allow_arbitrary_counts`</b>: Boolean. This represents whether the pmf/cdf
+    allows for the `counts` tensor to be non-integral values.
+    The pmf/cdf are functions that can be evaluated at non-integral values,
+    but are only a distribution over non-negative integers.
 
 
 *  <b>`Examples`</b>: 
@@ -2335,10 +2862,10 @@ Initialize a batch of DirichletMultinomial distributions.
 ```python
 # Define 1-batch of 2-class Dirichlet multinomial distribution,
 # also known as a beta-binomial.
-dist = DirichletMultinomial([1.1, 2.0])
+dist = DirichletMultinomial(2.0, [1.1, 2.0])
 
 # Define a 2-batch of 3-class distributions.
-dist = DirichletMultinomial([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+dist = DirichletMultinomial([3., 4], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 ```
 
 
@@ -2346,12 +2873,31 @@ dist = DirichletMultinomial([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
 #### `tf.contrib.distributions.DirichletMultinomial.alpha` {#DirichletMultinomial.alpha}
 
-Parameters defining this distribution.
+Parameter defining this distribution.
 
 
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.cdf(x)` {#DirichletMultinomial.cdf}
+#### `tf.contrib.distributions.DirichletMultinomial.batch_shape(name='batch_shape')` {#DirichletMultinomial.batch_shape}
+
+Batch dimensions of this instance as a 1-D int32 `Tensor`.
+
+The product of the dimensions of the `batch_shape` is the number of
+independent distributions of this kind the instance represents.
+
+##### Args:
+
+
+*  <b>`name`</b>: name to give to the op
+
+##### Returns:
+
+  `Tensor` `batch_shape`
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.cdf(x, name='cdf')` {#DirichletMultinomial.cdf}
 
 
 
@@ -2360,35 +2906,93 @@ Parameters defining this distribution.
 
 #### `tf.contrib.distributions.DirichletMultinomial.dtype` {#DirichletMultinomial.dtype}
 
+dtype of samples from this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.entropy(name='entropy')` {#DirichletMultinomial.entropy}
+
+Entropy of the distribution in nats.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.event_shape(name='event_shape')` {#DirichletMultinomial.event_shape}
+
+Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
+
+##### Args:
+
+
+*  <b>`name`</b>: name to give to the op
+
+##### Returns:
+
+  `Tensor` `event_shape`
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.get_batch_shape()` {#DirichletMultinomial.get_batch_shape}
+
+`TensorShape` available at graph construction time.
+
+Same meaning as `batch_shape`. May be only partially defined.
+
+##### Returns:
+
+  batch shape
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.get_event_shape()` {#DirichletMultinomial.get_event_shape}
+
+`TensorShape` available at graph construction time.
+
+Same meaning as `event_shape`. May be only partially defined.
+
+##### Returns:
+
+  event shape
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.log_cdf(x, name='log_cdf')` {#DirichletMultinomial.log_cdf}
+
 
 
 
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.log_cdf(x)` {#DirichletMultinomial.log_cdf}
+#### `tf.contrib.distributions.DirichletMultinomial.log_likelihood(value, name='log_likelihood')` {#DirichletMultinomial.log_likelihood}
 
-
+Log likelihood of this distribution (same as log_pmf).
 
 
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.log_pmf(counts, name=None)` {#DirichletMultinomial.log_pmf}
+#### `tf.contrib.distributions.DirichletMultinomial.log_pmf(counts, name='log_pmf')` {#DirichletMultinomial.log_pmf}
 
 `Log(P[counts])`, computed for every batch member.
 
-For each batch of counts `[c_1,...,c_k]`, `P[counts]` is the probability
-that after sampling `sum_j c_j` draws from this Dirichlet Multinomial
-distribution, the number of draws falling in class `j` is `c_j`.  Note that
+For each batch of counts `[n_1,...,n_k]`, `P[counts]` is the probability
+that after sampling `n` draws from this Dirichlet Multinomial
+distribution, the number of draws falling in class `j` is `n_j`.  Note that
 different sequences of draws can result in the same counts, thus the
 probability includes a combinatorial coefficient.
 
 ##### Args:
 
 
-*  <b>`counts`</b>: Non-negative `float`, `double`, or `int` tensor whose shape can
+*  <b>`counts`</b>: Non-negative `float` or `double` tensor whose shape can
     be broadcast with `self.alpha`.  For fixed leading dimensions, the last
     dimension represents counts for the corresponding Dirichlet Multinomial
-    distribution in `self.alpha`.
+    distribution in `self.alpha`. `counts` is only legal if it sums up to
+    `n` and its components are equal to integral values. The second
+    condition is relaxed if `allow_arbitrary_counts` is set.
 *  <b>`name`</b>: Name to give this Op, defaults to "log_pmf".
 
 ##### Returns:
@@ -2398,21 +3002,35 @@ probability includes a combinatorial coefficient.
 
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.mean` {#DirichletMultinomial.mean}
+#### `tf.contrib.distributions.DirichletMultinomial.mean(name='mean')` {#DirichletMultinomial.mean}
 
 Class means for every batch member.
 
 
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.num_classes` {#DirichletMultinomial.num_classes}
+#### `tf.contrib.distributions.DirichletMultinomial.mode(name='mode')` {#DirichletMultinomial.mode}
 
-Tensor providing number of classes in each batch member.
+Mode of the distribution.
 
 
 - - -
 
-#### `tf.contrib.distributions.DirichletMultinomial.pmf(counts, name=None)` {#DirichletMultinomial.pmf}
+#### `tf.contrib.distributions.DirichletMultinomial.n` {#DirichletMultinomial.n}
+
+Parameter defining this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.name` {#DirichletMultinomial.name}
+
+Name to prepend to all ops.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.pmf(counts, name='pmf')` {#DirichletMultinomial.pmf}
 
 `P[counts]`, computed for every batch member.
 
@@ -2425,15 +3043,51 @@ probability includes a combinatorial coefficient.
 ##### Args:
 
 
-*  <b>`counts`</b>: Non-negative `float`, `double`, or `int` tensor whose shape can
+*  <b>`counts`</b>: Non-negative `float`, `double` tensor whose shape can
     be broadcast with `self.alpha`.  For fixed leading dimensions, the last
     dimension represents counts for the corresponding Dirichlet Multinomial
-    distribution in `self.alpha`.
+    distribution in `self.alpha`. `counts` is only legal if it sums up to
+    `n` and its components are equal to integral values. The second
+    condition is relaxed if `allow_arbitrary_counts` is set.
 *  <b>`name`</b>: Name to give this Op, defaults to "pmf".
 
 ##### Returns:
 
   Probabilities for each record, shape `[N1,...,Nn]`.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.sample(n, seed=None, name='sample')` {#DirichletMultinomial.sample}
+
+Generate `n` samples.
+
+##### Args:
+
+
+*  <b>`n`</b>: scalar. Number of samples to draw from each distribution.
+*  <b>`seed`</b>: Python integer seed for RNG
+*  <b>`name`</b>: name to give to the op.
+
+##### Returns:
+
+
+*  <b>`samples`</b>: a `Tensor` of shape `(n,) + self.batch_shape + self.event_shape`
+      with values of type `self.dtype`.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.std(name='std')` {#DirichletMultinomial.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.DirichletMultinomial.variance(name='variance')` {#DirichletMultinomial.variance}
+
+Variance of the distribution.
 
 
 
@@ -2552,5 +3206,67 @@ will broadcast in the case of multidimensional sets of parameters.
 
 *  <b>`TypeError`</b>: if dtype of `s` does not match `dtype`, or `prior` is not a
     Normal object.
+
+
+
+## Kullback Leibler Divergence
+
+- - -
+
+### `tf.contrib.distributions.kl(dist_a, dist_b, allow_nan=False, name=None)` {#kl}
+
+Get the KL-divergence KL(dist_a || dist_b).
+
+##### Args:
+
+
+*  <b>`dist_a`</b>: instance of distributions.BaseDistribution.
+*  <b>`dist_b`</b>: instance of distributions.BaseDistribution.
+*  <b>`allow_nan`</b>: If False (default), a runtime error is raised
+    if the KL returns NaN values for any batch entry of the given
+    distributions.  If True, the KL may return a NaN for the given entry.
+*  <b>`name`</b>: (optional) Name scope to use for created operations.
+
+##### Returns:
+
+  A Tensor with the batchwise KL-divergence between dist_a and dist_b.
+
+##### Raises:
+
+
+*  <b>`TypeError`</b>: If dist_a or dist_b is not an instance of BaseDistribution.
+*  <b>`NotImplementedError`</b>: If no KL method is defined for distribution types
+    of dist_a and dist_b.
+
+
+- - -
+
+### `class tf.contrib.distributions.RegisterKL` {#RegisterKL}
+
+Decorator to register a KL divergence implementation function.
+
+Usage:
+
+@distributions.RegisterKL(distributions.Normal, distributions.Normal)
+def _kl_normal_mvn(norm_a, norm_b):
+  # Return KL(norm_a || norm_b)
+- - -
+
+#### `tf.contrib.distributions.RegisterKL.__init__(dist_cls_a, dist_cls_b)` {#RegisterKL.__init__}
+
+Initialize the KL registrar.
+
+##### Args:
+
+
+*  <b>`dist_cls_a`</b>: the class of the first argument of the KL divergence.
+*  <b>`dist_cls_b`</b>: the class of the second argument of the KL divergence.
+
+##### Raises:
+
+
+*  <b>`TypeError`</b>: if dist_cls_a or dist_cls_b are not subclasses of
+    BaseDistribution.
+
 
 

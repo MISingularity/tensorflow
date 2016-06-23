@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import numpy as np
 
 import tensorflow as tf
 from tensorflow.contrib.quantization.tools import quantize_graph
-from tensorflow.python.client import graph_util
+from tensorflow.python.framework import graph_util
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
