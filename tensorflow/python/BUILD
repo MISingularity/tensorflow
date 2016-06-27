@@ -794,6 +794,7 @@ tf_gen_op_wrapper_py(
 	"Lookaheadgpu",
 	"Lookaheadgrad",
 	"Lookaheadgradgpu",
+        "WarpCtcLoss",
     ],
     require_shape_functions = False,
 )
