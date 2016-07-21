@@ -733,6 +733,40 @@ tf_kernel_library(
     ],
 )
 
+
+tf_kernel_library(
+    name = "warpctc_ops",
+    prefix = "warpctc_ops",
+    deps = [
+	":bounds_check",
+	":ops_util",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:user_ops_op_lib",
+        "//tensorflow/core/kernels/warp-ctc/tests:warpctc",        
+    ],
+)
+
+tf_kernel_library(
+    name = "lookahead_ops",
+    prefix = "lookahead_ops",
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:user_ops_op_lib",
+    ],
+)
+
+tf_kernel_library(
+    name = "lookahead_grad_ops",
+    prefix = "lookahead_grad_ops",
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:user_ops_op_lib",
+    ],
+)
+
 tf_kernel_libraries(
     name = "image",
     prefixes = [
