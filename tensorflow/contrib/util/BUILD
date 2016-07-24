@@ -53,6 +53,16 @@ cc_test(
 )
 
 cc_binary(
+    name = "extract_checkpoint",
+    srcs = ["extract_checkpoint.cc"],
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:tensorflow",
+    ],
+)
+
+cc_binary(
     name = "inspect_checkpoint",
     srcs = ["inspect_checkpoint.cc"],
     deps = [
