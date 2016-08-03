@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,10 +127,13 @@ class OptimizersTest(tf.test.TestCase):
   def testIgnoreVariablesWithNoGradients(self):
     _, _, loss, global_step = _setup_model()
 
-    unused_variable = tf.get_variable("ignore me", [])
+    unused_variable = tf.get_variable("ignore_me", [])
 
     tf.contrib.layers.optimize_loss(
-        loss, global_step, learning_rate=0.1, optimizer="SGD")
+        loss, global_step, learning_rate=0.1, optimizer="SGD",
+        gradient_noise_scale=10.0,
+        gradient_multipliers={unused_variable: 1.},
+        clip_gradients=10.0)
 
   def testUpdateOp(self):
     optimizers = ["SGD", tf.train.GradientDescentOptimizer,
@@ -154,4 +157,3 @@ class OptimizersTest(tf.test.TestCase):
 
 if __name__ == "__main__":
   tf.test.main()
-

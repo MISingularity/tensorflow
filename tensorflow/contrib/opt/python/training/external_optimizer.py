@@ -1,4 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,6 +65,13 @@ class ExternalOptimizerInterface(object):
       self._vars = variables.trainable_variables()
     else:
       self._vars = list(var_list)
+
+    self._update_placeholders = [array_ops.placeholder(var.dtype)
+                                 for var in self._vars]
+    self._var_updates = [var.assign(array_ops.reshape(placeholder,
+                                                      _get_shape_tuple(var)))
+                         for var, placeholder in
+                         zip(self._vars, self._update_placeholders)]
 
     loss_grads = _compute_gradients(loss, self._vars)
     equalities_grads = [_compute_gradients(equality, self._vars)
@@ -156,8 +163,8 @@ class ExternalOptimizerInterface(object):
                 for packing_slice in self._packing_slices]
 
     # Set optimization variables to their new values.
-    session.run([var.assign(var_val.reshape(_get_shape_tuple(var)))
-                 for var, var_val in zip(self._vars, var_vals)])
+    session.run(self._var_updates,
+                feed_dict=dict(zip(self._update_placeholders, var_vals)))
 
   def _minimize(self, initial_val, loss_func, loss_grad_func, equality_funcs,
                 equality_grad_funcs, inequality_funcs, inequality_grad_funcs,

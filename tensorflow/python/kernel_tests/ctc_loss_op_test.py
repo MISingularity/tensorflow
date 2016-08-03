@@ -1,4 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@ import tensorflow as tf
 
 def SimpleSparseTensorFrom(x):
   """Create a very simple SparseTensor with dimensions (batch, time).
+
   Args:
     x: a list of lists of type int
+
   Returns:
     x_ix and x_val, the indices and values of the SparseTensor<2>.
   """
@@ -51,10 +53,10 @@ class CTCLossTest(tf.test.TestCase):
 
     inputs_t = tf.constant(inputs)
 
-    with self.test_session(use_gpu=True) as sess:
-      loss = tf.user_ops.warp_ctc_loss(inputs=inputs_t,
-                                     labels=labels,
-                                     sequence_length=seq_lens)
+    with self.test_session(use_gpu=False) as sess:
+      loss = tf.nn.ctc_loss(inputs=inputs_t,
+                            labels=labels,
+                            sequence_length=seq_lens)
       grad = tf.gradients(loss, [inputs_t])[0]
 
       self.assertShapeEqual(loss_truth, loss)
@@ -176,7 +178,7 @@ class CTCLossTest(tf.test.TestCase):
     # len max_time_steps array of 2 x depth matrices
     inputs = [np.vstack([input_log_prob_matrix_0[t, :],
                          input_log_prob_matrix_1[t, :]])
-              for t in range(5)]
+              for t in range(5)] + 2 * [np.nan*np.ones((2, depth), np.float32)]
 
     # convert inputs into [max_time x batch_size x depth tensor] Tensor
     inputs = np.asarray(inputs, dtype=np.float32)
@@ -193,7 +195,7 @@ class CTCLossTest(tf.test.TestCase):
     # output: len max_time_steps array of 2 x depth matrices
     grad_truth = [np.vstack([gradient_log_prob_0[t, :],
                              gradient_log_prob_1[t, :]])
-                  for t in range(5)]
+                  for t in range(5)] + 2 * [np.zeros((2, depth), np.float32)]
 
     # convert grad_truth into [max_time x batch_size x depth] Tensor
     grad_truth = np.asarray(grad_truth, dtype=np.float32)

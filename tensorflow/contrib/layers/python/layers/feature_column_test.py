@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,6 +35,12 @@ class FeatureColumnTest(tf.test.TestCase):
                                                          hash_bucket_size=100)
     self.assertEqual(a.name, "aaa")
 
+  def testWeightedSparseColumn(self):
+    ids = tf.contrib.layers.sparse_column_with_keys(
+        "ids", ["marlo", "omar", "stringer"])
+    weighted_ids = tf.contrib.layers.weighted_sparse_column(ids, "weights")
+    self.assertEqual(weighted_ids.name, "ids_weighted_by_weights")
+
   def testEmbeddingColumn(self):
     a = tf.contrib.layers.sparse_column_with_hash_bucket("aaa",
                                                          hash_bucket_size=100,
@@ -51,6 +57,14 @@ class FeatureColumnTest(tf.test.TestCase):
     b = tf.contrib.layers.real_valued_column("bbb", 10)
     self.assertEqual(b.dimension, 10)
     self.assertTrue(b.default_value is None)
+
+    # dimension is an integer
+    with self.assertRaises(TypeError):
+      tf.contrib.layers.real_valued_column("d3", dimension=1.0)
+
+    # dimension is a positive integer
+    with self.assertRaises(ValueError):
+      tf.contrib.layers.real_valued_column("d3", dimension=0)
 
     # default_value is an integer.
     c1 = tf.contrib.layers.real_valued_column("c1", default_value=2)
@@ -162,6 +176,26 @@ class FeatureColumnTest(tf.test.TestCase):
           set([b, tf.contrib.layers.real_valued_column("real")]),
           hash_bucket_size=10000)
 
+  def testWeightedSparseColumnDtypes(self):
+    ids = tf.contrib.layers.sparse_column_with_keys(
+        "ids", ["marlo", "omar", "stringer"])
+    weighted_ids = tf.contrib.layers.weighted_sparse_column(ids, "weights")
+    self.assertDictEqual(
+        {"ids": tf.VarLenFeature(tf.string),
+         "weights": tf.VarLenFeature(tf.float32)},
+        weighted_ids.config)
+
+    weighted_ids = tf.contrib.layers.weighted_sparse_column(ids, "weights",
+                                                            dtype=tf.int32)
+    self.assertDictEqual(
+        {"ids": tf.VarLenFeature(tf.string),
+         "weights": tf.VarLenFeature(tf.int32)},
+        weighted_ids.config)
+
+    with self.assertRaises(ValueError):
+      weighted_ids = tf.contrib.layers.weighted_sparse_column(ids, "weights",
+                                                              dtype=tf.string)
+
   def testRealValuedColumnDtypes(self):
     rvc = tf.contrib.layers.real_valued_column("rvc")
     self.assertDictEqual(
@@ -191,7 +225,7 @@ class FeatureColumnTest(tf.test.TestCase):
                                                                10,
                                                                dtype=tf.float32)
 
-  def testCreateDictForParseExample(self):
+  def testCreateFeatureSpec(self):
     sparse_col = tf.contrib.layers.sparse_column_with_hash_bucket(
         "sparse_column", hash_bucket_size=100)
     embedding_col = tf.contrib.layers.embedding_column(
@@ -199,6 +233,10 @@ class FeatureColumnTest(tf.test.TestCase):
             "sparse_column_for_embedding",
             hash_bucket_size=10),
         dimension=4)
+    sparse_id_col = tf.contrib.layers.sparse_column_with_keys(
+        "id_column", ["marlo", "omar", "stringer"])
+    weighted_id_col = tf.contrib.layers.weighted_sparse_column(
+        sparse_id_col, "id_weights_column")
     real_valued_col1 = tf.contrib.layers.real_valued_column(
         "real_valued_column1")
     real_valued_col2 = tf.contrib.layers.real_valued_column(
@@ -215,14 +253,16 @@ class FeatureColumnTest(tf.test.TestCase):
                                                          hash_bucket_size=100)
     cross_col = tf.contrib.layers.crossed_column(
         set([a, b]), hash_bucket_size=10000)
-    feature_columns = set([sparse_col, embedding_col,
+    feature_columns = set([sparse_col, embedding_col, weighted_id_col,
                            real_valued_col1, real_valued_col2,
                            bucketized_col1, bucketized_col2,
                            cross_col])
-    config = tf.contrib.layers.create_dict_for_parse_example(feature_columns)
+    config = tf.contrib.layers.create_feature_spec_for_parsing(feature_columns)
     self.assertDictEqual({
         "sparse_column": tf.VarLenFeature(tf.string),
         "sparse_column_for_embedding": tf.VarLenFeature(tf.string),
+        "id_column": tf.VarLenFeature(tf.string),
+        "id_weights_column": tf.VarLenFeature(tf.float32),
         "real_valued_column1": tf.FixedLenFeature([1], dtype=tf.float32),
         "real_valued_column2": tf.FixedLenFeature([5], dtype=tf.float32),
         "real_valued_column_for_bucketization1":
@@ -232,7 +272,7 @@ class FeatureColumnTest(tf.test.TestCase):
         "cross_aaa": tf.VarLenFeature(tf.string),
         "cross_bbb": tf.VarLenFeature(tf.string)}, config)
 
-  def testCreateDictForParseExample_RealValuedColumnWithDefaultValue(self):
+  def testCreateFeatureSpec_RealValuedColumnWithDefaultValue(self):
     real_valued_col1 = tf.contrib.layers.real_valued_column(
         "real_valued_column1", default_value=2)
     real_valued_col2 = tf.contrib.layers.real_valued_column(
@@ -244,7 +284,7 @@ class FeatureColumnTest(tf.test.TestCase):
         default_value=[1, 0, 6])
     feature_columns = [real_valued_col1, real_valued_col2,
                        real_valued_col3, real_valued_col4]
-    config = tf.contrib.layers.create_dict_for_parse_example(feature_columns)
+    config = tf.contrib.layers.create_feature_spec_for_parsing(feature_columns)
     self.assertEqual(4, len(config))
     self.assertDictEqual({
         "real_valued_column1":

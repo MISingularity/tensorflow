@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import contextlib
 import math
+import random
 import re
 import sys
 import threading
@@ -37,6 +38,7 @@ from tensorflow.python.client import session
 from tensorflow.python.framework import device as pydev
 from tensorflow.python.framework import errors
 from tensorflow.python.framework import ops
+from tensorflow.python.framework import random_seed
 from tensorflow.python.framework import versions
 from tensorflow.python.platform import googletest
 from tensorflow.python.platform import tf_logging as logging
@@ -119,7 +121,10 @@ class TensorFlowTestCase(googletest.TestCase):
 
   def setUp(self):
     self._ClearCachedSession()
+    random.seed(random_seed.DEFAULT_GRAPH_SEED)
+    np.random.seed(random_seed.DEFAULT_GRAPH_SEED)
     ops.reset_default_graph()
+    ops.get_default_graph().seed = random_seed.DEFAULT_GRAPH_SEED
 
   def tearDown(self):
     for thread in self._threads:

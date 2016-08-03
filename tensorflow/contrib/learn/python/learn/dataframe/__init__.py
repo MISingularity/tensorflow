@@ -1,4 +1,3 @@
-# pylint: disable=g-bad-file-header
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,15 +19,32 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow.contrib.learn.python.learn.dataframe.column import Column
-from tensorflow.contrib.learn.python.learn.dataframe.column import TransformedColumn
 from tensorflow.contrib.learn.python.learn.dataframe.dataframe import DataFrame
+from tensorflow.contrib.learn.python.learn.dataframe.series import PredefinedSeries
+from tensorflow.contrib.learn.python.learn.dataframe.series import Series
+from tensorflow.contrib.learn.python.learn.dataframe.series import TransformedSeries
+from tensorflow.contrib.learn.python.learn.dataframe.tensorflow_dataframe import TensorFlowDataFrame
 from tensorflow.contrib.learn.python.learn.dataframe.transform import parameter
 from tensorflow.contrib.learn.python.learn.dataframe.transform import Transform
 
 # Transforms
+from tensorflow.contrib.learn.python.learn.dataframe.transforms.boolean_mask import BooleanMask
 from tensorflow.contrib.learn.python.learn.dataframe.transforms.in_memory_source import NumpySource
 from tensorflow.contrib.learn.python.learn.dataframe.transforms.in_memory_source import PandasSource
 from tensorflow.contrib.learn.python.learn.dataframe.transforms.reader_source import ReaderSource
+from tensorflow.contrib.learn.python.learn.dataframe.transforms.sum import Sum
 
-__all__ = ['Column', 'TransformedColumn', 'DataFrame', 'parameter', 'Transform']
+# pylint: disable=g-import-not-at-top,g-bad-import-order
+
+# Unary Transform registration
+from tensorflow.contrib.learn.python.learn.dataframe.transforms import unary_transforms as _ut
+for ut_def in _ut.UNARY_TRANSFORMS:
+  _ut.register_unary_op(*ut_def)
+
+# Comparison Transform registration
+from tensorflow.contrib.learn.python.learn.dataframe.transforms import  compare as _cmp
+for ct_def in _cmp.COMPARISON_TRANSFORMS:
+  _cmp.register_comparison_ops(*ct_def)
+
+__all__ = ['DataFrame', 'Series', 'PredefinedSeries', 'TransformedSeries',
+           'TensorFlowDataFrame', 'parameter', 'Transform']
