@@ -31,7 +31,7 @@ typedef Eigen::ThreadPoolDevice CPUDevice;
 typedef Eigen::GpuDevice GPUDevice;
 
 template<>
-class WarpCtcLossOp<CPUDevice> : public OpKernel {
+class WarpCTCLossOp<CPUDevice> : public OpKernel {
   typedef Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
                                          Eigen::RowMajor> >
       InputMap;
@@ -40,7 +40,7 @@ class WarpCtcLossOp<CPUDevice> : public OpKernel {
       OutputMap;
 
  public:
-  explicit WarpCtcLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
+  explicit WarpCTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
     OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated",
                                      &preprocess_collapse_repeated_));
     OP_REQUIRES_OK(ctx,
@@ -126,5 +126,6 @@ class WarpCtcLossOp<CPUDevice> : public OpKernel {
   bool ctc_merge_repeated_;
 };
 
-REGISTER_KERNEL_BUILDER(Name("WarpCtcLoss").Device(DEVICE_CPU), WarpCtcLossOp<CPUDevice>);
-}
+REGISTER_KERNEL_BUILDER(Name("WarpCtcLoss").Device(DEVICE_CPU), WarpCTCLossOp<CPUDevice>);
+
+}  // end namespace tensorflow

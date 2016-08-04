@@ -8,7 +8,7 @@
 
 inline void throw_on_error(ctcStatus_t status, const char* message) {
     if (status != CTC_STATUS_SUCCESS) {
-      printf("error in cpu ctc\n");
+      printf("error in cpu ctc %s %s %d\n", message, __FILE__, __LINE__);
     }
 }
 

@@ -53,6 +53,7 @@ toolchain {
   cxx_flag: "-D_MWAITXINTRIN_H_INCLUDED"
   cxx_flag: "-D_FORCE_INLINES"
   cxx_flag: "-D__STRICT_ANSI__"
+  cxx_builtin_include_directory: "/usr/local/cuda-7.5/include"
   linker_flag: "-lstdc++"
   linker_flag: "-B/usr/bin/"
 
