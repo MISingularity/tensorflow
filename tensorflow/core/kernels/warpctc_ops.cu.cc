@@ -23,7 +23,7 @@ namespace tensorflow {
 typedef Eigen::GpuDevice GPUDevice;
 
 template<>
-class WarpCtcLossOp<GPUDevice> : public OpKernel {
+class WarpCTCLossOp<GPUDevice> : public OpKernel {
   typedef Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
                                          Eigen::RowMajor> >
       InputMap;
@@ -32,7 +32,7 @@ class WarpCtcLossOp<GPUDevice> : public OpKernel {
       OutputMap;
 
  public:
-  explicit WarpCtcLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
+  explicit WarpCTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
     OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated",
                                      &preprocess_collapse_repeated_));
     OP_REQUIRES_OK(ctx,
@@ -43,6 +43,11 @@ class WarpCtcLossOp<GPUDevice> : public OpKernel {
 
     // Calculate the score analytically
 
+    cudaStream_t stream = ctx->template eigen_device<Eigen::GpuDevice>().stream();
+/*
+    throw_on_error(cudaStreamCreate(&stream),
+                   "cudaStreamCreate");
+*/
     const Tensor& input_tensor = ctx->input(0);
     const Tensor& labels_indices_tensor = ctx->input(1);
     const Tensor& labels_values_tensor = ctx->input(2);
@@ -65,6 +70,8 @@ class WarpCtcLossOp<GPUDevice> : public OpKernel {
     for(int i = 0; i < labels_indices_tensor.dim_size(0); i++) {
       int64 first;
       int label_of_first;
+      cudaMemcpyAsync(&first, &labels_indices(i,0), sizeof(int64), cudaMemcpyDeviceToHost, stream);
+      cudaMemcpyAsync(&label_of_first, &labels_values(i), sizeof(int), cudaMemcpyDeviceToHost, stream);
       labels.push_back(label_of_first);
       if (first == last_first) {
         sum++;
@@ -79,19 +86,24 @@ class WarpCtcLossOp<GPUDevice> : public OpKernel {
     }
     int size_of_lengths = seq_len_tensor.dim_size(0);
     int lengths[size_of_lengths];
+    cudaMemcpyAsync(lengths, seq_len.data(), size_of_lengths * sizeof(int), cudaMemcpyDeviceToHost, stream);
+
     float score;
 
     ctcComputeInfo info;
     info.loc = CTC_GPU;
-    info.stream = ctx->template eigen_device<Eigen::GpuDevice>().stream();
+    info.stream = stream;
 
     size_t gpu_alloc_bytes;
-    throw_on_error(get_workspace_size(label_lengths.data(), (const int*)&lengths,
+    throw_on_error(get_workspace_size(label_lengths.data(), lengths,
                                       alphabet_size, size_of_lengths, info,
                                       &gpu_alloc_bytes),
                    "Error: get_workspace_size in small_test");
 
     char *ctc_gpu_workspace;
+    throw_on_error(cudaMalloc(&ctc_gpu_workspace, gpu_alloc_bytes),
+                   "cudaMalloc");
+
     Tensor* loss = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output("loss", seq_len_tensor.shape(), &loss));
     auto loss_t = loss->vec<float>();
@@ -101,16 +113,40 @@ class WarpCtcLossOp<GPUDevice> : public OpKernel {
                    ctx->allocate_output("gradient", inputs_shape, &gradient));
     auto gradient_t = gradient->tensor<float, 3>();
     float loss_cpu[size_of_lengths];
+    cudaMemset(gradient_t.data(), 0, gradient->NumElements() * sizeof(float));
     throw_on_error(compute_ctc_loss(activations_gpu, gradient_t.data(),
                                     labels.data(), label_lengths.data(),
-                                    (const int *)&lengths,
+                                    lengths,
                                     alphabet_size,
                                     size_of_lengths,
                                     loss_cpu,
                                     ctc_gpu_workspace,
                                     info),
                    "Error: compute_ctc_loss in small_test");
+/*
+    auto d0 = gradient->dim_size(0);
+    auto d1 = gradient->dim_size(1);
+    auto d2 = gradient->dim_size(2);
+    float * g = (float*) malloc(sizeof(float) * d0 * d1 * d2);
+    fprintf(stderr, "456\n");
+    cudaMemcpyAsync(g, gradient_t.data(), d0 * d1 * d2 * sizeof(float), cudaMemcpyDeviceToHost, stream);
+    fprintf(stderr, "123\n");
+    for (auto i0 = 0; i0 < d0; ++i0)
+      for (auto i1 = 0; i1 < d1; ++i1)
+      {
+        for (auto i2 =  0; i2 < d2; ++i2)
+        fprintf(stderr, "%f\t", g[(i0 * d1 + i1) * d2 + i2]);
+        fprintf(stderr, "\n");
+      }
+*/
+    cudaMemcpyAsync(loss_t.data(), loss_cpu, size_of_lengths * sizeof(float), cudaMemcpyHostToDevice, stream);
 
+    throw_on_error(cudaFree(ctc_gpu_workspace),
+                   "cudaFree");
+/*
+    throw_on_error(cudaStreamDestroy(stream),
+                   "cudaStreamDestroy");
+*/
   }
 
  private:
@@ -118,5 +154,6 @@ class WarpCtcLossOp<GPUDevice> : public OpKernel {
   bool ctc_merge_repeated_;
 };
 
-REGISTER_KERNEL_BUILDER(Name("WarpCtcLoss").Device(DEVICE_GPU), WarpCtcLossOp<GPUDevice>);
-}
+REGISTER_KERNEL_BUILDER(Name("WarpCtcLoss").Device(DEVICE_GPU), WarpCTCLossOp<GPUDevice>);
+
+}  // end namespace tensorflow

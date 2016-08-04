@@ -29,9 +29,9 @@ limitations under the License.
 namespace tensorflow {
 
 template<typename Device>
-class WarpCtcLossOp : public OpKernel {
+class WarpCTCLossOp : public OpKernel {
  public:
-  explicit WarpCtcLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
+  explicit WarpCTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
     OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated",
                                      &preprocess_collapse_repeated_));
     OP_REQUIRES_OK(ctx,
