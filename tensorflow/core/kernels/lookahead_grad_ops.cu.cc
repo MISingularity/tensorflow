@@ -1,6 +1,7 @@
 #define EIGEN_USE_THREADS
 #include "tensorflow/core/kernels/lookahead_grad_ops.h"
 #include <cuda_runtime.h>
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 using namespace tensorflow;
 

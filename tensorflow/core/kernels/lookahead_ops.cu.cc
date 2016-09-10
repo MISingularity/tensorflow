@@ -16,6 +16,7 @@
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/types.h"
 #include <cuda_runtime.h>
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 
 using namespace tensorflow;

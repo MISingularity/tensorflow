@@ -95,10 +95,10 @@ class WarpCTCLossOp<CPUDevice> : public OpKernel {
     info.num_threads = 1;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(label_lengths.data(), lengths,
-                                      alphabet_size, size_of_lengths, info,
-                                      &cpu_alloc_bytes),
-                   "Error: get_workspace_size in small_test");
+//    throw_on_error(get_workspace_size(label_lengths.data(), lengths,
+//                                      alphabet_size, size_of_lengths, info,
+//                                      &cpu_alloc_bytes),
+//                   "Error: get_workspace_size in small_test");
 
     void* ctc_cpu_workspace = std::malloc(cpu_alloc_bytes);
 
@@ -110,15 +110,15 @@ class WarpCTCLossOp<CPUDevice> : public OpKernel {
     OP_REQUIRES_OK(ctx,
                    ctx->allocate_output("gradient", inputs_shape, &gradient));
     auto gradient_t = gradient->tensor<float, 3>();
-    throw_on_error(compute_ctc_loss(activations_cpu, gradient_t.data(),
-                                    labels.data(), label_lengths.data(),
-                                    lengths,
-                                    alphabet_size,
-                                    size_of_lengths,
-                                    loss_t.data(),
-                                    ctc_cpu_workspace,
-                                    info),
-                   "Error: compute_ctc_loss in small_test");
+//    throw_on_error(compute_ctc_loss(activations_cpu, gradient_t.data(),
+//                                    labels.data(), label_lengths.data(),
+//                                    lengths,
+//                                    alphabet_size,
+//                                    size_of_lengths,
+//                                    loss_t.data(),
+//                                    ctc_cpu_workspace,
+//                                    info),
+//                   "Error: compute_ctc_loss in small_test");
   }
 
  private:

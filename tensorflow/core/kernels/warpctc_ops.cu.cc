@@ -18,6 +18,7 @@ limitations under the License.
 #include "tensorflow/core/kernels/warpctc_ops.h"
 #include "tensorflow/core/kernels/warp-ctc/tests/test.h"
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 namespace tensorflow {
 
 typedef Eigen::GpuDevice GPUDevice;
