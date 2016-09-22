@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package speech;
+// ---------------grpc service---------------
+service ASR {
+    rpc Speech(SpeechInput) returns (CLMOutput) {}
+}
+
+service Speech {
+    rpc SpeechRecognize(SpeechInput) returns (SpeechOutput) {}
+}
+
+
+service CLM {
+    rpc ContrainModel(CLMInput) returns (CLMOutput) {}
+}
+
+// ---------------speech message---------------
+
+message SpeechInput {
+    repeated bytes sinput = 1;
+}
+
+message SpeechOutput {
+    repeated SpeechOutputUnit soutput = 1;
+}
+
+message SpeechOutputUnit {
+    repeated string pinyins = 1;
+    repeated float scores = 2;
+    bool success = 3;
+}
+
+// ---------------clm message---------------
+
+message CLMInput {
+    repeated CLMInputUnit cinput = 1;
+}
+
+message CLMInputUnit {
+    repeated string pinyin_list = 1;
+}
+
+message CLMOutput {
+    repeated string coutput = 1;
+}

@@ -215,15 +215,26 @@ cc_binary(
     ],
 )
 
+cc_library(
+  name = "speech_grpc",
+  srcs = glob(["speech/speech.grpc.pb.*"]) + glob(["speech/speech.pb.*"]),
+)
+
 cc_binary(
-    name = "speech_server",
-    srcs = ["speech/speech_server.cc"] + glob(["speech/pkg/*"]),
+    name = "clm_server",
+    srcs = ["speech/clm_server.cc"] + glob(["speech/pkg/*"]),
     copts = tf_copts(),
     linkopts = [
         "-lpthread",
         "-lm",
+        "-lglog",
+        "-lgflags",
+        "-lgrpc++",
+        "-lprotobuf",
+        "-ldl",
     ],
     deps = [
+	":speech_grpc", 
         ":cc_ops",
         "//tensorflow/core:all_kernels",
         "//tensorflow/core:core_cpu",
