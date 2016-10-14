@@ -360,6 +360,7 @@ void SpeechInput::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* SpeechInput::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
   // @@protoc_insertion_point(serialize_to_array_start:speech.SpeechInput)
   // repeated bytes sinput = 1;
   for (int i = 0; i < this->sinput_size(); i++) {
@@ -640,6 +641,7 @@ void SpeechOutput::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* SpeechOutput::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
   // @@protoc_insertion_point(serialize_to_array_start:speech.SpeechOutput)
   // repeated .speech.SpeechOutputUnit soutput = 1;
   for (unsigned int i = 0, n = this->soutput_size(); i < n; i++) {
@@ -958,6 +960,7 @@ void SpeechOutputUnit::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* SpeechOutputUnit::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
   // @@protoc_insertion_point(serialize_to_array_start:speech.SpeechOutputUnit)
   // repeated string pinyins = 1;
   for (int i = 0; i < this->pinyins_size(); i++) {
@@ -1330,6 +1333,7 @@ void CLMInput::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* CLMInput::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
   // @@protoc_insertion_point(serialize_to_array_start:speech.CLMInput)
   // repeated .speech.CLMInputUnit cinput = 1;
   for (unsigned int i = 0, n = this->cinput_size(); i < n; i++) {
@@ -1595,6 +1599,7 @@ void CLMInputUnit::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* CLMInputUnit::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
   // @@protoc_insertion_point(serialize_to_array_start:speech.CLMInputUnit)
   // repeated string pinyin_list = 1;
   for (int i = 0; i < this->pinyin_list_size(); i++) {
@@ -1887,6 +1892,7 @@ void CLMOutput::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* CLMOutput::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
   // @@protoc_insertion_point(serialize_to_array_start:speech.CLMOutput)
   // repeated string coutput = 1;
   for (int i = 0; i < this->coutput_size(); i++) {

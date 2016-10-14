@@ -77,8 +77,10 @@ std::vector<std::string> split(const std::string &text, char sep) {
 class CLM_Servicer {
 public:
   std::unique_ptr<tensorflow::Session> session;
+  // model config
   static const int T = 25;
-  static const int B = 1;
+  static const int B = 20;
+  
   clm::WordsDictionary* ch_dict_;
   clm::WordsDictionary* py_dict_;
   tensorflow::GraphDef graph;
@@ -158,7 +160,7 @@ public:
     LOG(INFO) << "phase6";
 
     auto ch = ans->flat<int64>();
-    for (int i = 0; i < T; i++) {
+    for (int i = 0; i < B*T; i++) {
       ret.push_back(ch(i));
     }
     LOG(INFO) << "phase7";
@@ -169,15 +171,19 @@ public:
 
 class CLMImpl final : public speech::CLM::Service {
  public:
+  char * graph_file_path = "tensorflow/cc/speech/clm_graph.pb";
+  char * chinese_dict_path = "tensorflow/cc/speech/chinese.txt";
+  char * pinyin_dict_path = "tensorflow/cc/speech/pinyin_without_light_tone.txt";
   CLM_Servicer clm_service;
   explicit CLMImpl() {
-     clm_service = CLM_Servicer("tensorflow/cc/speech/graph.pb", "tensorflow/cc/speech/pinyin.txt", "tensorflow/cc/speech/chinese.txt");
+     clm_service = CLM_Servicer(graph_file_path, pinyin_dict_path, chinese_dict_path);
   }
   grpc::Status ContrainModel(ServerContext* context, const CLMInput* request, CLMOutput* response) override {
     // Now only support 1 request
     std::vector<std::vector<int>> pinyin_inputs;
     std::vector<int> appendix;
     pinyin_inputs.clear();
+    int null_tag = clm_service.py_dict_->getIdByWord("<null>");
     for (int i = 0; i < request->cinput_size(); i++) {
       const CLMInputUnit cinput = request->cinput(i);
       std::vector<int> pinyin_str;
@@ -195,7 +201,7 @@ class CLMImpl final : public speech::CLM::Service {
         if (pinyin_str.size() < clm_service.T) {
             int remains = clm_service.T - pinyin_str.size();
             for (int i = 0; i < remains; i++) {
-              pinyin_str.push_back(clm_service.py_dict_->getIdByWord("<null>"));
+              pinyin_str.push_back(null_tag);
             }
         }
         pinyin_inputs.push_back(pinyin_str);
@@ -203,14 +209,53 @@ class CLMImpl final : public speech::CLM::Service {
       }
     }
     // TODO: if batch_size more than 1, need add padding phase and update the inference/decode part.
-    std::vector<int> ids = clm_service.inference(pinyin_inputs);
-    LOG(INFO) << "phase9";
-    std::string ret = "";
-    for (int id : ids) {
-      ret += clm_service.ch_dict_->getWordById(id) + " ";
+    int origin_length = request->cinput_size();
+    int diff = clm_service.B - (pinyin_inputs.size() - 1) % clm_service.B - 1;
+    std::vector<int> temp;
+    for (int i = 0; i < clm_service.T; i++) {
+      temp.push_back(null_tag);
     }
-    response->add_coutput(ret);
-
+    for (int i = 0; i < diff; i++) {
+      pinyin_inputs.push_back(temp); 
+      appendix.push_back(-1);
+    }
+    std::vector<std::vector<std::vector<int>>> outputs;
+    for (int i = 0; i < origin_length; i++) {
+      outputs.push_back(std::vector<std::vector<int>>());
+    }
+//std::vector<std::vector<int>>())
+    LOG(INFO) << pinyin_inputs.size() << " " << origin_length;
+    for (int i = 0; i < pinyin_inputs.size() / clm_service.B; i++) { 
+      std::vector<std::vector<int>>::const_iterator first = pinyin_inputs.begin() + i*clm_service.B;
+      std::vector<std::vector<int>>::const_iterator last = pinyin_inputs.begin() + (i+1)*clm_service.B;
+      std::vector<std::vector<int>> newVec(first, last);
+      std::vector<int> b_outputs = clm_service.inference(newVec);
+      for (int ap_id = i * clm_service.B; ap_id < (i + 1) * clm_service.B; ap_id++) {
+        if (appendix[ap_id] < 0) {
+          continue;
+        }
+        int b_id = ap_id - i * clm_service.B;
+        std::vector<int>::const_iterator bfirst = b_outputs.begin() + b_id*clm_service.T;
+        std::vector<int>::const_iterator blast = b_outputs.begin() + (b_id+1)*clm_service.T;
+        std::vector<int> b_item(bfirst, blast);
+        outputs[appendix[ap_id]].push_back(b_item);
+      } 
+    }
+    LOG(INFO) << "phase9";
+//    for every group of input unit, rerank the items and select the most
+//    satisfactory one.
+//    Currenly, we only select the first one.
+//    Need Weiwan to reimplement it.
+    for (int b = 0; b < origin_length; b++) { 
+      std::string ret = "";
+      for (int id = 0; id < outputs[b].size(); id++) {
+        for (int cid = 0; cid < outputs[b][id].size(); cid++) {
+          ret += clm_service.ch_dict_->getWordById(outputs[b][id][cid]) + " ";
+        }
+        break;
+      }
+      response->add_coutput(ret);
+    }
     return grpc::Status::OK;
   }
 };

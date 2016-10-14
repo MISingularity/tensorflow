@@ -227,8 +227,8 @@ cc_binary(
     linkopts = [
         "-lpthread",
         "-lm",
-        "-lglog",
-        "-lgflags",
+#        "-lglog",
+#        "-lgflags",
         "-lgrpc++",
         "-lprotobuf",
         "-ldl",
