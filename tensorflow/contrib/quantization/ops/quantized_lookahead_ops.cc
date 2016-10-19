@@ -6,14 +6,17 @@
 
 namespace tensorflow {
 
+using shape_inference::InferenceContext;
+using shape_inference::ShapeHandle;
+
 REGISTER_OP("QuantizedLookahead")
-	  .Input("input: T1")
-	  .Input("filter: T2")
+    .Input("input: T1")
+    .Input("filter: T2")
     .Input("min_input: float")
     .Input("max_input: float")
     .Input("min_filter: float")
     .Input("max_filter: float")
-	  .Output("output: Toutput");
+    .Output("output: Toutput")
     .Output("min_output: float")
     .Output("max_output: float")
     .Attr("T1: quantizedtype")
@@ -36,7 +39,7 @@ REGISTER_OP("QuantizedLookahead")
         c->set_output(1, c->Scalar());
         c->set_output(2, c->Scalar());
         return Status::OK();
-    })
+    });
 
 }  // namespace tensorflow
 
