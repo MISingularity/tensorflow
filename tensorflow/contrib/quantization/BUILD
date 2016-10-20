@@ -163,6 +163,7 @@ tf_custom_op_library(
         "ops/array_ops.cc",
         "ops/math_ops.cc",
         "ops/nn_ops.cc",
+        "ops/quantized_lookahead_ops.cc",
     ],
     deps = [
     ],
