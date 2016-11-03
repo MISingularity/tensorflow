@@ -61,6 +61,7 @@ tf_kernel_library(
         "quantized_conv_ops.cc",
         "quantized_matmul_op.cc",
         "quantized_pooling_ops.cc",
+        "octbit_matmul_op.cc",
     ],
     hdrs = [
         "quantization_utils.h",
@@ -133,6 +134,27 @@ tf_cc_test(
         "//tensorflow/core/kernels:ops_util",
     ],
 )
+
+tf_cc_test(
+    name = "quantization_octbit_matmul_test",
+    srcs = ["octbit_matmul_op_test.cc"],
+    deps = [
+        ":quantized_ops",
+        "//tensorflow/contrib/quantization:cc_array_ops",
+        "//tensorflow/contrib/quantization:cc_math_ops",
+        "//tensorflow/contrib/quantization:cc_nn_ops",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+        "//third_party/eigen3",
+    ],
+)
+
 
 tf_cc_test(
     name = "quantization_utils_test",

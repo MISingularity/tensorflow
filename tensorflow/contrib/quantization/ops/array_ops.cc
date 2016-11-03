@@ -22,6 +22,19 @@ namespace tensorflow {
 using shape_inference::InferenceContext;
 using shape_inference::ShapeHandle;
 
+REGISTER_OP("OctbitMatMul")
+    .Input("input_a: qint8")
+    .Input("input_b: T")
+    .Attr("transpose_a: bool = false")
+    .Attr("transpose_b: bool = true")
+    .Attr("scale: float = 0.0")
+    .Attr("bias: tensor")
+    .Output("output: T")
+    .Attr("T: type = DT_FLOAT")
+    .SetShapeFn([](InferenceContext* c) {
+        return Status::OK();
+     });
+
 REGISTER_OP("QuantizeV2")
     .Input("input: float")
     .Input("min_range: float")
