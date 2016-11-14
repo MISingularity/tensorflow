@@ -15,29 +15,17 @@ limitations under the License.
 
 // See docs in ../ops/ctc_ops.cc.
 
-#include "tensorflow/contrib/warpctc/kernels/warpctc_ops.h"
 #include "tensorflow/contrib/warpctc/kernels/warp-ctc/include/ctc.h"
 
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 namespace tensorflow {
 
-typedef Eigen::GpuDevice GPUDevice;
 
-template<>
-class WarpCTCLossOp<GPUDevice> : public OpKernel {
-  typedef Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
-                                         Eigen::RowMajor> >
-      InputMap;
-  typedef Eigen::Map<
-      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> >
-      OutputMap;
-
+class GpuWarpCTCLossOp : public OpKernel {
  public:
-  explicit WarpCTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
-    OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated",
-                                     &preprocess_collapse_repeated_));
-    OP_REQUIRES_OK(ctx,
-                   ctx->GetAttr("ctc_merge_repeated", &ctc_merge_repeated_));
+  explicit GpuWarpCTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
+    bool p, c;
+    OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated", &p));
+    OP_REQUIRES_OK(ctx, ctx->GetAttr("ctc_merge_repeated", &c));
   }
 
   void Compute(OpKernelContext* ctx) override {
@@ -89,21 +77,17 @@ class WarpCTCLossOp<GPUDevice> : public OpKernel {
     int lengths[size_of_lengths];
     cudaMemcpyAsync(lengths, seq_len.data(), size_of_lengths * sizeof(int), cudaMemcpyDeviceToHost, stream);
 
-    float score;
-
     ctcComputeInfo info;
     info.loc = CTC_GPU;
     info.stream = stream;
 
     size_t gpu_alloc_bytes;
-    throw_on_error(get_workspace_size(label_lengths.data(), lengths,
-                                      alphabet_size, size_of_lengths, info,
-                                      &gpu_alloc_bytes),
-                   "Error: get_workspace_size in small_test");
+    get_workspace_size(label_lengths.data(), lengths,
+                       alphabet_size, size_of_lengths, info,
+                       &gpu_alloc_bytes);
 
     char *ctc_gpu_workspace;
-    throw_on_error(cudaMalloc(&ctc_gpu_workspace, gpu_alloc_bytes),
-                   "cudaMalloc");
+    cudaMalloc(&ctc_gpu_workspace, gpu_alloc_bytes);
 
     Tensor* loss = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output("loss", seq_len_tensor.shape(), &loss));
@@ -115,15 +99,14 @@ class WarpCTCLossOp<GPUDevice> : public OpKernel {
     auto gradient_t = gradient->tensor<float, 3>();
     float loss_cpu[size_of_lengths];
     cudaMemset(gradient_t.data(), 0, gradient->NumElements() * sizeof(float));
-    throw_on_error(compute_ctc_loss(activations_gpu, gradient_t.data(),
-                                    labels.data(), label_lengths.data(),
-                                    lengths,
-                                    alphabet_size,
-                                    size_of_lengths,
-                                    loss_cpu,
-                                    ctc_gpu_workspace,
-                                    info),
-                   "Error: compute_ctc_loss in small_test");
+    compute_ctc_loss(activations_gpu, gradient_t.data(),
+                     labels.data(), label_lengths.data(),
+                     lengths,
+                     alphabet_size,
+                     size_of_lengths,
+                     loss_cpu,
+                     ctc_gpu_workspace,
+                     info);
 /*
     auto d0 = gradient->dim_size(0);
     auto d1 = gradient->dim_size(1);
@@ -142,19 +125,15 @@ class WarpCTCLossOp<GPUDevice> : public OpKernel {
 */
     cudaMemcpyAsync(loss_t.data(), loss_cpu, size_of_lengths * sizeof(float), cudaMemcpyHostToDevice, stream);
 
-    throw_on_error(cudaFree(ctc_gpu_workspace),
-                   "cudaFree");
+    cudaFree(ctc_gpu_workspace);
 /*
     throw_on_error(cudaStreamDestroy(stream),
                    "cudaStreamDestroy");
 */
   }
 
- private:
-  bool preprocess_collapse_repeated_;
-  bool ctc_merge_repeated_;
 };
 
-REGISTER_KERNEL_BUILDER(Name("WarpCtcLoss").Device(DEVICE_GPU), WarpCTCLossOp<GPUDevice>);
+REGISTER_KERNEL_BUILDER(Name("WarpCtcLoss").Device(DEVICE_GPU), GpuWarpCTCLossOp);
 
 }  // end namespace tensorflow
