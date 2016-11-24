@@ -455,7 +455,9 @@ class GraphRewriter(object):
         continue
       input_node = self.nodes_map[input_node_name]
       self.eightbitize_nodes_recursively(input_node)
-    if current_node.op == "MatMul":
+    if current_node.op == "Lookahead":
+      self.eightbitize_lookahead_node(current_node)
+    elif current_node.op == "MatMul":
       self.eightbitize_mat_mul_node(current_node)
     elif current_node.op == "Conv2D":
       self.eightbitize_conv_node(current_node)
@@ -563,6 +565,21 @@ class GraphRewriter(object):
     set_attr_dtype(dequantize_node, "T", tf.quint8)
     set_attr_string(dequantize_node, "mode", b"MIN_FIRST")
     self.add_output_graph_node(dequantize_node)
+
+  def eightbitize_lookahead_node(self, original_node):
+    """Replaces a Lookahead node with the eight bit equivalent sub-graph."""
+    quantized_lookahead_name = original_node.name + "_eightbit_quantized_lookahead"
+    all_input_names = self.add_eightbit_prologue_nodes(original_node)
+    quantized_lookahead_node = create_node(
+        "QuantizedLookahead", quantized_lookahead_name,
+        all_input_names)
+    set_attr_dtype(quantized_lookahead_node, "T1", tf.quint8)
+    set_attr_dtype(quantized_lookahead_node, "T2", tf.quint8)
+    set_attr_dtype(quantized_lookahead_node, "Toutput", tf.qint32)
+    self.add_output_graph_node(quantized_lookahead_node)
+    quantize_down_name = self.add_quantize_down_node(original_node,
+                                                     quantized_lookahead_name)
+    self.add_dequantize_result_node(quantize_down_name, original_node.name)
 
   def eightbitize_mat_mul_node(self, original_node):
     """Replaces a MatMul node with the eight bit equivalent sub-graph."""

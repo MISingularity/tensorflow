@@ -14,6 +14,16 @@ load(
 )
 
 cc_library(
+    name = "cc_lookahead_ops",
+    srcs = ["ops/quantized_lookahead_ops.cc"],
+    linkstatic = 1,
+    deps = [
+        "//tensorflow/core:framework",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
     name = "cc_array_ops",
     srcs = ["ops/array_ops.cc"],
     linkstatic = 1,
@@ -50,6 +60,7 @@ cc_library(
         ":cc_array_ops",
         ":cc_math_ops",
         ":cc_nn_ops",
+        ":cc_lookahead_ops",
     ],
     alwayslink = 1,
 )
@@ -80,12 +91,14 @@ py_library(
         "python/array_ops.py",
         "python/math_ops.py",
         "python/nn_ops.py",
+        "python/quantized_lookahead_ops.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
         ":array_ops",
         ":math_ops",
         ":nn_ops",
+        ":quantized_lookahead_ops",
     ],
 )
 
@@ -102,6 +115,11 @@ tf_gen_op_wrapper_py(
 tf_gen_op_wrapper_py(
     name = "nn_ops",
     deps = ["//tensorflow/contrib/quantization:cc_nn_ops"],
+)
+
+tf_gen_op_wrapper_py(
+    name = "quantized_lookahead_ops",
+    deps = ["//tensorflow/contrib/quantization:cc_lookahead_ops"],
 )
 
 py_test(
@@ -145,6 +163,7 @@ tf_custom_op_library(
         "ops/array_ops.cc",
         "ops/math_ops.cc",
         "ops/nn_ops.cc",
+        "ops/quantized_lookahead_ops.cc",
     ],
     deps = [
     ],
