@@ -142,37 +142,21 @@ template<typename ProbT, bool allow_skip_blank = true>
 class CpuCTC {
  public:
   ~CpuCTC() {
-    delete workspace_;
     delete[] probs;
   }
 
   // Noncopyable
   CpuCTC(int alphabet_size, int minibatch,
          const ProbT* const pactivations,
-         const int* const pflat_labels,
-         const int* const plabel_lengths,
-         const int* const pslot_lengths,
+         CpuCTCWorkspace<ProbT>* ws,
          const int* const pinput_lengths,
          ProbT* pcosts, ProbT* pgradients,
          const int blank_index = 0) :
     alphabet_size_(alphabet_size), blank_index_(blank_index),
-    minibatch_(minibatch), workspace_(nullptr),
+    minibatch_(minibatch), workspace_(ws),
     activations(pactivations), input_lengths(pinput_lengths),
     costs(pcosts), grads(pgradients), probs(nullptr) {
-    int maxT = *std::max_element(input_lengths, input_lengths + minibatch_);
-    int maxL = *std::max_element(plabel_lengths, plabel_lengths + minibatch_);
-    workspace_ = new CpuCTCWorkspace<ProbT>(minibatch, maxL, maxT, alphabet_size_, blank_index_);
-
-    for (int mb = 0; mb < minibatch_; ++mb) {
-      const int T = input_lengths[mb]; // Length of utterance (time)
-      const int L = plabel_lengths[mb]; // Length of utterance (time)
-      const int S = pslot_lengths[mb]; // Number of labels in transcription
-
-      int label_count = std::accumulate(plabel_lengths, plabel_lengths + mb, 0);
-      const int* const labels = pflat_labels + label_count;
-      workspace_->reset(mb, L, S, T, labels);
-    }
-
+    int maxT = *std::max_element(input_lengths, input_lengths + minibatch);
     // compute softmax, need to make sure the order is right: currently it is t x b x f
     probs = new ProbT[maxT * minibatch_ * alphabet_size_];
   };
@@ -374,7 +358,6 @@ class CpuCTC {
         for (int j = slot_start[l]; j < slot_end[l]; j++) {
           betas[j] = betas[j] + std::log(yprobs(t, mb, blank_index_));
           alphas(t, j) += betas[j];
-
           output[labels[j]] = log_add(alphas(t, j), output[labels[j]]);
         }
       }
@@ -450,9 +433,6 @@ class CpuWarpCTCLossOp : public OpKernel {
     // The length of each label for each example in the minibatch.
     // and add a blank between adjacent labels
     // add blank at the begin and the end of minibatch
-    if (blank_index < 0) {
-      blank_index += alphabet_size;
-    }
     std::vector<int> label_lengths;
     std::vector<int> slot_lengths;
     if (labels_indices_tensor.dim_size(0) > 0) {
@@ -497,8 +477,29 @@ class CpuWarpCTCLossOp : public OpKernel {
     Tensor* gradient;
     OP_REQUIRES_OK(ctx, ctx->allocate_output("gradient", inputs_shape, &gradient));
     auto gradient_t = gradient->tensor<float, 3>();
-    CpuCTC<float> ctc(alphabet_size, seq_len_tensor.dim_size(0), activations,
-                      labels.data(), label_lengths.data(), slot_lengths.data(),
+
+    // first setup workspace
+    int minibatch = seq_len_tensor.dim_size(0);
+    const int* const pflat_labels = labels.data();
+    const int* const plabel_lengths = label_lengths.data();
+    const int* const pslot_lengths = slot_lengths.data();
+    const int* const pinput_lengths = seq_len.data();
+
+    int maxT = *std::max_element(pinput_lengths, pinput_lengths + minibatch);
+    int maxL = *std::max_element(plabel_lengths, plabel_lengths + minibatch);
+    CpuCTCWorkspace<float> workspace(minibatch, maxL, maxT, alphabet_size, blank_index);
+
+    for (int mb = 0; mb < minibatch; ++mb) {
+      const int T = pinput_lengths[mb]; // Length of utterance (time)
+      const int L = plabel_lengths[mb]; // Length of utterance (time)
+      const int S = pslot_lengths[mb]; // Number of labels in transcription
+
+      int label_count = std::accumulate(plabel_lengths, plabel_lengths + mb, 0);
+      const int* const labels = pflat_labels + label_count;
+      workspace.reset(mb, L, S, T, labels);
+    }
+
+    CpuCTC<float> ctc(alphabet_size, minibatch, activations, &workspace,
                       seq_len.data(), loss_t.data(), gradient_t.data(), blank_index);
 
     ctc.cost_and_grad();
