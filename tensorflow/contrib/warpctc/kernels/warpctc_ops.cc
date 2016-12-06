@@ -26,9 +26,7 @@ namespace tensorflow {
 
 template<typename ProbT>
 class CpuCTCWorkspace {
-
  private:
-
   void setup_labels(int mb, const int* plabels, int L, int S, int BLANK) {
     int base_2d = mb * L_size;
     for (int i = 0; i < L; ++i) {
@@ -87,7 +85,8 @@ class CpuCTCWorkspace {
     delete[] labels;
   }
 
-  CpuCTCWorkspace(int B, int L, int T, int a, int blank_index) : alphabet_size(a), T_size(T), L_size(L) {
+  CpuCTCWorkspace(int B, int L, int T, int a, int blank_index)
+    :  L_size(L), T_size(T), alphabet_size(a) {
     alphas = new ProbT[B*L*T];
     betas = new ProbT[B*L];
 
@@ -158,13 +157,22 @@ class CpuCTC {
          const int blank_index = 0) :
     alphabet_size_(alphabet_size), blank_index_(blank_index),
     minibatch_(minibatch), workspace_(nullptr),
-    activations(pactivations), flat_labels(pflat_labels),
-    label_lengths(plabel_lengths), slot_lengths(pslot_lengths),
-    input_lengths(pinput_lengths), costs(pcosts), grads(pgradients),
-    probs(nullptr) {
+    activations(pactivations), input_lengths(pinput_lengths),
+    costs(pcosts), grads(pgradients), probs(nullptr) {
     int maxT = *std::max_element(input_lengths, input_lengths + minibatch_);
-    int maxL = *std::max_element(label_lengths, label_lengths + minibatch_);
+    int maxL = *std::max_element(plabel_lengths, plabel_lengths + minibatch_);
     workspace_ = new CpuCTCWorkspace<ProbT>(minibatch, maxL, maxT, alphabet_size_, blank_index_);
+
+    for (int mb = 0; mb < minibatch_; ++mb) {
+      const int T = input_lengths[mb]; // Length of utterance (time)
+      const int L = plabel_lengths[mb]; // Length of utterance (time)
+      const int S = pslot_lengths[mb]; // Number of labels in transcription
+
+      int label_count = std::accumulate(plabel_lengths, plabel_lengths + mb, 0);
+      const int* const labels = pflat_labels + label_count;
+      workspace_->reset(mb, L, S, T, labels);
+    }
+
     // compute softmax, need to make sure the order is right: currently it is t x b x f
     probs = new ProbT[maxT * minibatch_ * alphabet_size_];
   };
@@ -194,17 +202,7 @@ class CpuCTC {
     }
 
     for (int mb = 0; mb < minibatch_; ++mb) {
-      const int T = input_lengths[mb]; // Length of utterance (time)
-      const int L = label_lengths[mb]; // Length of utterance (time)
-      const int S = slot_lengths[mb]; // Number of labels in transcription
-
-      int label_count = std::accumulate(label_lengths, label_lengths + mb, 0);
-      const int* const labels = flat_labels + label_count;
-      workspace_->reset(mb, L, S, T, labels);
-    }
-    CpuCTCWorkspace<ProbT>& ctcm(*workspace_);
-    for (int mb = 0; mb < minibatch_; ++mb) {
-      costs[mb] = cost_and_grad_kernel(mb, ctcm);
+      costs[mb] = cost_and_grad_kernel(mb);
     }
   }
 
@@ -217,9 +215,6 @@ class CpuCTC {
   CpuCTCWorkspace<ProbT>* workspace_;
 
   const ProbT* const activations;
-  const int* const flat_labels;
-  const int* const label_lengths;
-  const int* const slot_lengths;
   const int* const input_lengths;
 
   ProbT* costs;
@@ -227,12 +222,12 @@ class CpuCTC {
 
   ProbT* probs;
 
-  ProbT cost_and_grad_kernel(int mb, CpuCTCWorkspace<ProbT>& ctcm) {
+  ProbT cost_and_grad_kernel(int mb) {
     bool over_threshold = false;
 
-    // T should be at least greater than L + number of repeats.
-    ProbT llForward = compute_alphas(mb, ctcm);
-    ProbT llBackward = compute_betas_and_grad(llForward, mb, ctcm);
+    // T should be at least greater than L + number of repeats
+    ProbT llForward = compute_alphas(mb);
+    ProbT llBackward = compute_betas_and_grad(llForward, mb);
 
     ProbT diff = std::abs(llForward - llBackward);
     if (diff > ctc_helper::threshold) {
@@ -243,7 +238,8 @@ class CpuCTC {
   }
 
 
-  ProbT compute_alphas(int mb, CpuCTCWorkspace<ProbT>& ctcm) {
+  ProbT compute_alphas(int mb) {
+    CpuCTCWorkspace<ProbT>& ctcm(*workspace_);
     int start_2d = mb * ctcm.L_size;
     int start_3d = mb * ctcm.L_size * ctcm.T_size;
     const int T = ctcm.T_arr[mb];
@@ -300,7 +296,8 @@ class CpuCTC {
   // sum into the gradient associated with each label.
   // NOTE computes gradient w.r.t UNNORMALIZED final layer activations.
   // Assumed passed in grads are already zeroed!
-  ProbT compute_betas_and_grad(ProbT log_partition, int mb, CpuCTCWorkspace<ProbT>& ctcm) {
+  ProbT compute_betas_and_grad(ProbT log_partition, int mb) {
+    CpuCTCWorkspace<ProbT>& ctcm(*workspace_);
     int start_2d = mb * ctcm.L_size;
     int start_3d = mb * ctcm.L_size * ctcm.T_size;
     const int T = ctcm.T_arr[mb];
