@@ -26,6 +26,7 @@ REGISTER_OP("WarpCtcLoss")
     .Attr("preprocess_collapse_repeated: bool = false")
     .Attr("ctc_merge_repeated: bool = true")
     .Attr("blank_index: int = 0")
+    .Attr("new_blank_index: int = -1")
     .Output("loss: float")
     .Output("gradient: float")
     .Doc(R"doc(
