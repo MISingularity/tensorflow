@@ -28,10 +28,12 @@ template<typename ProbT>
 class CpuCTCWorkspace {
  private:
   void setup_labels(int mb, const int* plabels, int L, int S, int BLANK) {
+
     int base_2d = mb * L_size;
     for (int i = 0; i < L; ++i) {
       labels[i + base_2d] = plabels[i];
     }
+
 
     int l = 1;
     slot_start[base_2d] = 0;
@@ -65,7 +67,6 @@ class CpuCTCWorkspace {
       e_inc[e_counter++] = slot_end[base_2d + i * 2 + 1] - slot_start[base_2d + i * 2 + 1];
     }
     e_inc[e_counter++] = 1;
-
     return;
   }
 
@@ -109,8 +110,8 @@ class CpuCTCWorkspace {
   }
 
   void reset(int mb, int L, int S, int T, const int* const labels) {
-    std::fill(alphas + mb * L * T, alphas + (mb + 1) * L * T, ctc_helper::neg_inf<ProbT>());
-    std::fill(betas + mb * L, betas + (mb + 1) * L, ctc_helper::neg_inf<ProbT>());
+    std::fill(alphas + mb * L_size * T, alphas + (mb + 1) * L_size * T, ctc_helper::neg_inf<ProbT>());
+    std::fill(betas + mb * L_size, betas + (mb + 1) * L_size, ctc_helper::neg_inf<ProbT>());
     L_arr[mb] = L;
     S_arr[mb] = S;
     T_arr[mb] = T;
@@ -236,7 +237,7 @@ class CpuCTC {
     const int* const slot_start = ctcm.slot_start + start_2d;
     const int* const slot_index = ctcm.slot_index + start_2d;
 
-    Accessor2D<ProbT> alphas(L, ctcm.alphas + start_3d);
+    Accessor2D<ProbT> alphas(ctcm.L_size, ctcm.alphas + start_3d);
     Accessor3D<ProbT> yprobs(minibatch_, alphabet_size_, probs);
     int least_slot_num = 2 * S - 1;
     int start = ((least_slot_num - T) < 0) ? 0 : 1;
@@ -295,7 +296,7 @@ class CpuCTC {
     const int* const slot_index = ctcm.slot_index + start_2d;
 
 
-    Accessor2D<ProbT> alphas(L, ctcm.alphas + start_3d);
+    Accessor2D<ProbT> alphas(ctcm.L_size, ctcm.alphas + start_3d);
     Accessor3D<ProbT> yprobs(minibatch_, alphabet_size_, probs);
     Accessor3D<ProbT> ygrads(minibatch_, alphabet_size_, grads);
 
@@ -387,10 +388,12 @@ class CpuCTC {
 class CpuWarpCTCLossOp : public OpKernel {
  public:
   int blank_index = -1;
+  int new_blank_index = -1;
   explicit CpuWarpCTCLossOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
     bool p, c;
     OP_REQUIRES_OK(ctx, ctx->GetAttr("preprocess_collapse_repeated", &p));
     OP_REQUIRES_OK(ctx, ctx->GetAttr("blank_index", &blank_index));
+    OP_REQUIRES_OK(ctx, ctx->GetAttr("new_blank_index", &new_blank_index));
     OP_REQUIRES_OK(ctx, ctx->GetAttr("ctc_merge_repeated", &c));
   }
 
@@ -470,6 +473,17 @@ class CpuWarpCTCLossOp : public OpKernel {
       }
     }
 
+    // if new blank index exists,
+    // substitue old one into new one.
+    int final_blank_index = blank_index;
+    if (new_blank_index >= 0) {
+        for (int i = 0; i < labels.size(); i++) {
+            if (labels[i] == blank_index) {
+                labels[i] = new_blank_index;
+            }
+        }
+        final_blank_index = new_blank_index;
+    }
     Tensor* loss = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output("loss", seq_len_tensor.shape(), &loss));
     auto loss_t = loss->vec<float>();
@@ -487,7 +501,7 @@ class CpuWarpCTCLossOp : public OpKernel {
 
     int maxT = *std::max_element(pinput_lengths, pinput_lengths + minibatch);
     int maxL = *std::max_element(plabel_lengths, plabel_lengths + minibatch);
-    CpuCTCWorkspace<float> workspace(minibatch, maxL, maxT, alphabet_size, blank_index);
+    CpuCTCWorkspace<float> workspace(minibatch, maxL, maxT, alphabet_size, final_blank_index);
 
     for (int mb = 0; mb < minibatch; ++mb) {
       const int T = pinput_lengths[mb]; // Length of utterance (time)
@@ -498,10 +512,8 @@ class CpuWarpCTCLossOp : public OpKernel {
       const int* const labels = pflat_labels + label_count;
       workspace.reset(mb, L, S, T, labels);
     }
-
     CpuCTC<float> ctc(alphabet_size, minibatch, activations, &workspace,
-                      seq_len.data(), loss_t.data(), gradient_t.data(), blank_index);
-
+                      seq_len.data(), loss_t.data(), gradient_t.data(), final_blank_index);
     ctc.cost_and_grad();
   }
 };
