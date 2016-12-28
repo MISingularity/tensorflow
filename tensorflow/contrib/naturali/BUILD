@@ -25,7 +25,6 @@ py_library(
     srcs = ["__init__.py"] + glob(["python/ops/*.py"]) + glob(["tools/*.py"]),
     data = [
         ":python/ops/_lookahead_ops.so",
-        ":python/ops/_octbit_ops.so",
     ],
     srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
@@ -45,65 +44,6 @@ tf_custom_op_library(
     deps = [
         "//tensorflow/core/kernels:eigen_helpers",
     ],
-)
-
-tf_custom_op_library(
-    name = "python/ops/_octbit_ops.so",
-    srcs = [
-        "kernels/octbit_mat_mul_op.cc",
-        "ops/octbit_ops.cc",
-    ],
-    deps = [
-        "//tensorflow/core/kernels:eigen_helpers",
-    ],
-)
-
-tf_cc_test(
-    name = "octbit_mat_mul_test",
-    size = "small", 
-    srcs = ["kernels/octbit_mat_mul_op_test.cc"],
-    deps = [
-        ":octbit_ops",
-		":cc_octbit_ops", 
-        "//tensorflow/core:core_cpu",
-        "//tensorflow/core:core_cpu_internal",
-        "//tensorflow/core:framework",
-        "//tensorflow/core:lib",
-        "//tensorflow/core:protos_all_cc",
-        "//tensorflow/core:test",
-        "//tensorflow/core:test_main",
-        "//tensorflow/core:testlib",
-        "//third_party/eigen3",
-    ],
-)
-
-tf_kernel_library(
-    name = "octbit_ops",
-    srcs = [
-        "kernels/octbit_mat_mul_op.cc",
-    ],
-    deps = [
-        "//tensorflow/core",
-        "//tensorflow/core:framework",
-        "//tensorflow/core:lib",
-        "//tensorflow/core/kernels:concat_lib_hdrs",
-        "//tensorflow/core/kernels:conv_ops",
-        "//tensorflow/core/kernels:eigen_helpers",
-        "//tensorflow/core/kernels:ops_util",
-        "//tensorflow/core/kernels:pooling_ops",
-        "//third_party/eigen3",
-        "@gemmlowp//:eight_bit_int_gemm",
-    ],
-)
-
-cc_library(
-    name = "cc_octbit_ops",
-    srcs = ["ops/octbit_ops.cc"],
-    linkstatic = 1,
-    deps = [
-        "//tensorflow/core:framework",
-    ],
-    alwayslink = 1,
 )
 
 
